@@ -13,6 +13,8 @@ public:
 	~Renderer();
 
 	void Render();
+	void ClearColor(int r, int g, int b);
+	void DrawColor(int r, int g, int b);
 
 	void DrawRectangle(int startX, int startY, int endX, int endY);
 
@@ -24,6 +26,9 @@ private:
 	void BresenhamNaive(int x1, int y1, int x2, int y2);
 	void BresenhamHorizontal(int x1, int y1, int x2, int y2);
 	void BresenhamVertical(int x1, int y1, int x2, int y2);
+
+private:
+	void DemoCube();
 
 private:
 	int GetWindowWidth();

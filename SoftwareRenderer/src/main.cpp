@@ -3,7 +3,7 @@
 
 #include "Renderer.h"
 
-#define SCREEN_WIDTH 600
+#define SCREEN_WIDTH 800
 
 int main()
 {
@@ -13,12 +13,16 @@ int main()
 
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_WIDTH, 0, &window, &SDLRenderer);
-	SDL_SetRenderDrawColor(SDLRenderer, 0, 0, 0, 0);
-	SDL_RenderClear(SDLRenderer);
-	SDL_SetRenderDrawColor(SDLRenderer, 0, 255, 255, 255);
 
 	Renderer renderer(SDLRenderer, window);
+
+	renderer.ClearColor(0, 0, 0);
+
+	SDL_SetRenderDrawColor(SDLRenderer, 0, 255, 255, 255);
+
 	renderer.Render();
+
+	SDL_RenderPresent(SDLRenderer);
 
 	while (true)
 	{
