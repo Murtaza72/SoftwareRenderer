@@ -129,7 +129,7 @@ void Renderer::BresenhamHorizontal(int x1, int y1, int x2, int y2)
 		}
 		else
 		{
-			p += 2 * dy - 2 * dx;
+			p += 2 * (dy - dx);
 			y += dir;
 		}
 	}
@@ -158,7 +158,7 @@ void Renderer::BresenhamVertical(int x1, int y1, int x2, int y2)
 	int dx = x2 - x1;
 	int dy = y2 - y1;
 
-	int p = 2 * dy - dx;
+	int p = 2 * dx - dy;
 
 	int dir = dx < 0 ? -1 : 1;
 	dx *= dir;
@@ -173,7 +173,7 @@ void Renderer::BresenhamVertical(int x1, int y1, int x2, int y2)
 		}
 		else
 		{
-			p += 2 * dx - 2 * dy;
+			p += 2 * (dx - dy);
 			x += dir;
 		}
 	}
