@@ -7,47 +7,14 @@
 #include <stdlib.h>
 #include <vector>
 
+#include "Triangle.h"
+
 #define INVERT_Y_AXIS 1
-
-struct Vec2
-{
-	float x, y;
-};
-
-struct Vec3
-{
-	float x, y, z;
-};
-
-struct Triangle
-{
-	Vec3 p[3];
-};
 
 struct Mesh
 {
 	std::vector<Triangle> tris;
 };
-
-struct Mat4x4
-{
-	float mat[4][4] = { 0 };
-};
-
-void MultiplyMatrixVector(const Vec3& in, Vec3& out, const Mat4x4& mat)
-{
-	out.x = in.x * mat.mat[0][0] + in.y * mat.mat[1][0] + in.z * mat.mat[2][0] + mat.mat[3][0];
-	out.y = in.x * mat.mat[0][1] + in.y * mat.mat[1][1] + in.z * mat.mat[2][1] + mat.mat[3][1];
-	out.z = in.x * mat.mat[0][2] + in.y * mat.mat[1][2] + in.z * mat.mat[2][2] + mat.mat[3][2];
-	float w = in.x * mat.mat[0][3] + in.y * mat.mat[1][3] + in.z * mat.mat[2][3] + mat.mat[3][3];
-
-	if (w != 0.0f)
-	{
-		out.x /= w;
-		out.y /= w;
-		out.z /= w;
-	}
-}
 
 Renderer::~Renderer()
 {
@@ -64,25 +31,18 @@ void Renderer::Render()
 void Renderer::JavidDemo()
 {
 	Mesh cubeMesh;
-	cubeMesh.tris = {
-		{0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 1.0f, 0.0f},
-		{0.0f, 0.0f, 0.0f,	1.0f, 1.0f, 0.0f,	1.0f, 0.0f, 0.0f},
-
-		{1.0f, 0.0f, 0.0f,	1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f},
-		{1.0f, 0.0f, 0.0f,	1.0f, 1.0f, 1.0f,	1.0f, 0.0f, 1.0f},
-
-		{1.0f, 0.0f, 1.0f,	1.0f, 1.0f, 1.0f,	0.0f, 1.0f, 1.0f},
-		{1.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f,	0.0f, 0.0f, 1.0f},
-
-		{0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f,	0.0f, 1.0f, 0.0f},
-		{0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 0.0f},
-
-		{0.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f,	1.0f, 1.0f, 1.0f},
-		{0.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f,	1.0f, 1.0f, 0.0f},
-
-		{1.0f, 0.0f, 1.0f,	0.0f, 0.0f, 1.0f,	0.0f, 0.0f, 0.0f},
-		{1.0f, 0.0f, 1.0f,	0.0f, 0.0f, 0.0f,	1.0f, 0.0f, 0.0f},
-	};
+	cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 0.0f}, Vec3{0.0f, 1.0f, 0.0f}, Vec3{1.0f, 1.0f, 0.0f} });
+	cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 0.0f}, Vec3{1.0f, 1.0f, 0.0f}, Vec3{1.0f, 0.0f, 0.0f} });
+	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 0.0f}, Vec3{1.0f, 1.0f, 0.0f}, Vec3{1.0f, 1.0f, 1.0f} });
+	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 0.0f}, Vec3{1.0f, 1.0f, 1.0f}, Vec3{1.0f, 0.0f, 1.0f} });
+	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, Vec3{1.0f, 1.0f, 1.0f}, Vec3{0.0f, 1.0f, 1.0f} });
+	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, Vec3{0.0f, 1.0f, 1.0f}, Vec3{0.0f, 0.0f, 1.0f} });
+	cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 1.0f}, Vec3{0.0f, 1.0f, 1.0f}, Vec3{0.0f, 1.0f, 0.0f} });
+	cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 1.0f}, Vec3{0.0f, 1.0f, 0.0f}, Vec3{0.0f, 0.0f, 0.0f} });
+	cubeMesh.tris.push_back({ Vec3{0.0f, 1.0f, 0.0f}, Vec3{0.0f, 1.0f, 1.0f}, Vec3{1.0f, 1.0f, 1.0f} });
+	cubeMesh.tris.push_back({ Vec3{0.0f, 1.0f, 0.0f}, Vec3{1.0f, 1.0f, 1.0f}, Vec3{1.0f, 1.0f, 0.0f} });
+	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, Vec3{0.0f, 0.0f, 1.0f}, Vec3{0.0f, 0.0f, 0.0f} });
+	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, Vec3{0.0f, 0.0f, 0.0f}, Vec3{1.0f, 0.0f, 0.0f} });
 
 	float theta = 0;
 
@@ -90,39 +50,14 @@ void Renderer::JavidDemo()
 	float farPlane = 1000.0f;
 	float fov = 90.0f;
 	float aspectRatio = (float)GetWindowWidth() / GetWindowHeight();
-	float fovRad = 1.0f / tanf(fov * 0.5 / 180.0f * 3.1415f);		// convert theta to radians
 
-	Mat4x4 projectionMat;
-	projectionMat.mat[0][0] = aspectRatio * fovRad;
-	projectionMat.mat[1][1] = fovRad;
-	projectionMat.mat[2][2] = farPlane / (farPlane - nearPlane);
-	projectionMat.mat[3][2] = (-farPlane * nearPlane) / (farPlane - nearPlane);
-	projectionMat.mat[2][3] = 1.0f;
-	projectionMat.mat[3][3] = 0.0f;
+	Mat4x4 projectionMat = Mat4x4::Projection(nearPlane, farPlane, aspectRatio, fov);
 
 	theta += SDL_GetTicks() / 500.0f;
 
-	Mat4x4 rotationMatX, rotationMatY, rotationMatZ;
-	rotationMatX.mat[0][0] = 1;
-	rotationMatX.mat[1][1] = cosf(0.5f * theta);
-	rotationMatX.mat[1][2] = sinf(0.5f * theta);
-	rotationMatX.mat[2][1] = -sinf(0.5f * theta);
-	rotationMatX.mat[2][2] = cosf(0.5f * theta);
-	rotationMatX.mat[3][3] = 1;
-
-	rotationMatY.mat[0][0] = cosf(0.5f * theta);
-	rotationMatY.mat[0][2] = sinf(0.5f * theta);
-	rotationMatY.mat[2][0] = -sinf(0.5f * theta);
-	rotationMatY.mat[2][2] = cosf(0.5f * theta);
-	rotationMatY.mat[1][1] = 1;
-	rotationMatY.mat[3][3] = 1;
-
-	rotationMatZ.mat[0][0] = cosf(0.5f * theta);
-	rotationMatZ.mat[0][1] = sinf(0.5f * theta);
-	rotationMatZ.mat[1][0] = -sinf(0.5f * theta);
-	rotationMatZ.mat[1][1] = cosf(0.5f * theta);
-	rotationMatZ.mat[2][2] = 1;
-	rotationMatZ.mat[3][3] = 1;
+	Mat4x4 rotationMatX = Mat4x4::RotationX(0.5 * theta);
+	Mat4x4 rotationMatY = Mat4x4::RotationY(0.5 * theta);
+	Mat4x4 rotationMatZ = Mat4x4::RotationZ(0.5 * theta);
 
 	#define INVERT_Y_AXIS 0
 
@@ -130,44 +65,20 @@ void Renderer::JavidDemo()
 	{
 		Triangle triProjected, triTranslated, triRotatedZ, triRotatedZY, triRotatedZYX;
 
-		MultiplyMatrixVector(tri.p[0], triRotatedZ.p[0], rotationMatX);
-		MultiplyMatrixVector(tri.p[1], triRotatedZ.p[1], rotationMatX);
-		MultiplyMatrixVector(tri.p[2], triRotatedZ.p[2], rotationMatX);
-
-		MultiplyMatrixVector(triRotatedZ.p[0], triRotatedZY.p[0], rotationMatY);
-		MultiplyMatrixVector(triRotatedZ.p[1], triRotatedZY.p[1], rotationMatY);
-		MultiplyMatrixVector(triRotatedZ.p[2], triRotatedZY.p[2], rotationMatY);
-
-		MultiplyMatrixVector(triRotatedZY.p[0], triRotatedZYX.p[0], rotationMatZ);
-		MultiplyMatrixVector(triRotatedZY.p[1], triRotatedZYX.p[1], rotationMatZ);
-		MultiplyMatrixVector(triRotatedZY.p[2], triRotatedZYX.p[2], rotationMatZ);
+		triRotatedZ = TransformTriangle(tri, rotationMatX);
+		triRotatedZY = TransformTriangle(triRotatedZ, rotationMatY);
+		triRotatedZYX = TransformTriangle(triRotatedZY, rotationMatZ);
 
 		triTranslated = triRotatedZYX;
-		triTranslated.p[0].z = triRotatedZYX.p[0].z + 3.0f;
-		triTranslated.p[1].z = triRotatedZYX.p[1].z + 3.0f;
-		triTranslated.p[2].z = triRotatedZYX.p[2].z + 3.0f;
+		triTranslated.p[0].z += 3.0f;
+		triTranslated.p[1].z += 3.0f;
+		triTranslated.p[2].z += 3.0f;
 
-		#if 0
-		// Projection
-		triTranslated.p[0].x /= triTranslated.p[0].z;
-		triTranslated.p[0].y /= triTranslated.p[0].z;
-		triTranslated.p[1].x /= triTranslated.p[1].z;
-		triTranslated.p[1].y /= triTranslated.p[1].z;
-		triTranslated.p[2].x /= triTranslated.p[2].z;
-		triTranslated.p[2].y /= triTranslated.p[2].z;
-		triProjected.p[0] = triTranslated.p[0];
-		triProjected.p[1] = triTranslated.p[1];
-		triProjected.p[2] = triTranslated.p[2];
+		triProjected = TransformTriangle(triTranslated, projectionMat);
 
-		#else
-		MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], projectionMat);
-		MultiplyMatrixVector(triTranslated.p[1], triProjected.p[1], projectionMat);
-		MultiplyMatrixVector(triTranslated.p[2], triProjected.p[2], projectionMat);
-		#endif
-
-		triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1.0f;
-		triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1.0f;
-		triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1.0f;
+		triProjected.p[0] += Vec3(1.0f, 1.0f, 0.0f);
+		triProjected.p[1] += Vec3(1.0f, 1.0f, 0.0f);
+		triProjected.p[2] += Vec3(1.0f, 1.0f, 0.0f);
 
 		triProjected.p[0].x *= 0.5f * (float)GetWindowWidth();
 		triProjected.p[0].y *= 0.5f * (float)GetWindowHeight();
@@ -204,12 +115,6 @@ void Renderer::DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3
 	DrawLine(p1X, p1Y, p2X, p2Y);
 	DrawLine(p2X, p2Y, p3X, p3Y);
 	DrawLine(p3X, p3Y, p1X, p1Y);
-}
-
-void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3)
-{
-
-
 }
 
 void Renderer::DrawLine(float x1, float y1, float x2, float y2)

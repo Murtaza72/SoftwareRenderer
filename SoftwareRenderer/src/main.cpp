@@ -23,7 +23,7 @@ int main()
 			break;
 
 		renderer.ClearColor(0, 0, 0);
-		renderer.DrawColor(255, 0, 255);
+		renderer.DrawColor(127, 0, 255);
 		renderer.Render();
 		SDL_RenderPresent(SDLRenderer);
 	}

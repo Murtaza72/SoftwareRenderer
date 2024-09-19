@@ -2,6 +2,10 @@
 
 #include <SDL.h>
 
+#include "Vec3.h"
+#include "Vec2.h"
+#include "Mat4x4.h"
+
 class Renderer
 {
 public:
@@ -17,7 +21,7 @@ public:
 	void DrawColor(int r, int g, int b);
 
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y);
-	void FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3);
+	//void FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3);
 
 	void DrawRectangle(float startX, float startY, float endX, float endY);
 
