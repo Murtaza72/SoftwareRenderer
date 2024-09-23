@@ -4,6 +4,8 @@
 #include <chrono>
 #include <thread>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 #include "Triangle.h"
 
@@ -12,6 +14,51 @@
 struct Mesh
 {
 	std::vector<Triangle> tris;
+
+	bool LoadObject(std::string filename)
+	{
+		std::ifstream f(filename);
+
+		if (!f.is_open())
+			return false;
+
+		std::vector<Vec3> verts;
+
+		while (!f.eof())
+		{
+			char line[128];
+			f.getline(line, 128);
+
+			std::stringstream s;
+
+			s << line;
+
+			char junk;
+
+			if (line[0] == 'v')
+			{
+				Vec3 v;
+				s >> junk >> v.x >> v.y >> v.z;
+				verts.push_back(v);
+			}
+
+			if (line[0] == 'f')
+			{
+				int f[3];
+				s >> junk >> f[0] >> f[1] >> f[2];
+				Triangle t = { verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1] };
+				tris.push_back(t);
+			}
+
+		}
+
+		return true;
+	}
+};
+
+struct Camera
+{
+	Vec3 position;
 };
 
 Renderer::~Renderer()
@@ -29,18 +76,21 @@ void Renderer::Render()
 void Renderer::JavidDemo()
 {
 	Mesh cubeMesh; // clockwise winding
-	cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} });
-	cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
-	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} });
-	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 1.0f} });
-	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 1.0f} });
-	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f} });
-	cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f} });
-	cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f} });
-	cubeMesh.tris.push_back({ Vec3{0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f} });
-	cubeMesh.tris.push_back({ Vec3{0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f} });
-	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} });
-	cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
+	//cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} });
+	//cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
+	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} });
+	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 1.0f} });
+	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 1.0f} });
+	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f} });
+	//cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f} });
+	//cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f} });
+	//cubeMesh.tris.push_back({ Vec3{0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f} });
+	//cubeMesh.tris.push_back({ Vec3{0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f} });
+	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} });
+	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
+
+	if (!cubeMesh.LoadObject("./assets/ship.obj"))
+		std::cout << "Could not load the obj file!!!" << std::endl;
 
 	float theta = 0;
 
@@ -51,7 +101,7 @@ void Renderer::JavidDemo()
 
 	Mat4x4 projectionMat = Mat4x4::Projection(nearPlane, farPlane, aspectRatio, fov);
 
-	theta += SDL_GetTicks() / 1000.0f;
+	theta += SDL_GetTicks() / 4000.0f;
 
 	Mat4x4 rotationMatX = Mat4x4::RotationX(theta);
 	Mat4x4 rotationMatY = Mat4x4::RotationY(theta);
@@ -59,38 +109,52 @@ void Renderer::JavidDemo()
 
 	#define INVERT_Y_AXIS 0
 
+	Camera cam;
+	cam.position = { 0.0f, 0.0f, 0.0f };
+
 	for (auto tri : cubeMesh.tris)
 	{
 		tri = TransformTriangle(tri, rotationMatX);
 		tri = TransformTriangle(tri, rotationMatY);
 		tri = TransformTriangle(tri, rotationMatZ);
 
-		tri.p[0].z += 3.0f;
-		tri.p[1].z += 3.0f;
-		tri.p[2].z += 3.0f;
+		tri.p[0].z += 10.0f;
+		tri.p[1].z += 10.0f;
+		tri.p[2].z += 10.0f;
 
-		tri = TransformTriangle(tri, projectionMat);
+		Vec3 line1 = tri.p[1] - tri.p[0];
+		Vec3 line2 = tri.p[2] - tri.p[0];
+		Vec3 normal = Cross(line1, line2);
+		normal = normal.Normalize();
 
-		tri.p[0] += Vec3(1.0f, 1.0f, 0.0f);
-		tri.p[1] += Vec3(1.0f, 1.0f, 0.0f);
-		tri.p[2] += Vec3(1.0f, 1.0f, 0.0f);
+		if (Dot(normal, { tri.p[0] - cam.position }) < 0.0f)
+		{
+			tri = TransformTriangle(tri, projectionMat);
 
-		tri.p[0].x *= 0.5f * (float)GetWindowWidth();
-		tri.p[0].y *= 0.5f * (float)GetWindowHeight();
-		tri.p[1].x *= 0.5f * (float)GetWindowWidth();
-		tri.p[1].y *= 0.5f * (float)GetWindowHeight();
-		tri.p[2].x *= 0.5f * (float)GetWindowWidth();
-		tri.p[2].y *= 0.5f * (float)GetWindowHeight();
+			// translate to middle of the screen
+			tri.p[0] += Vec3(1.0f, 1.0f, 0.0f);
+			tri.p[1] += Vec3(1.0f, 1.0f, 0.0f);
+			tri.p[2] += Vec3(1.0f, 1.0f, 0.0f);
 
-		FillTriangle({ tri.p[0].x, tri.p[0].y },
-			{ tri.p[1].x, tri.p[1].y },
-			{ tri.p[2].x, tri.p[2].y }, Colors::Green
-		);
+			tri.p[0].x *= 0.5f * (float)GetWindowWidth();
+			tri.p[0].y *= 0.5f * (float)GetWindowHeight();
+			tri.p[1].x *= 0.5f * (float)GetWindowWidth();
+			tri.p[1].y *= 0.5f * (float)GetWindowHeight();
+			tri.p[2].x *= 0.5f * (float)GetWindowWidth();
+			tri.p[2].y *= 0.5f * (float)GetWindowHeight();
 
-		DrawTriangle(tri.p[0].x, tri.p[0].y,
-			tri.p[1].x, tri.p[1].y,
-			tri.p[2].x, tri.p[2].y, Colors::Blue
-		);
+			std::swap(tri.p[1], tri.p[2]);
+
+			FillTriangle({ tri.p[0].x, tri.p[0].y },
+				{ tri.p[1].x, tri.p[1].y },
+				{ tri.p[2].x, tri.p[2].y }, Colors::Cyan
+			);
+
+			DrawTriangle(tri.p[0].x, tri.p[0].y,
+				tri.p[1].x, tri.p[1].y,
+				tri.p[2].x, tri.p[2].y, Colors::Magenta
+			);
+		}
 	}
 }
 
@@ -174,6 +238,14 @@ bool IsTopLeftEdge(Vec2 start, Vec2 end)
 
 void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 {
+	// Attention: This function requires the points 
+	// to be in clockwise order, make sure it satisfies
+	// this constraint. Hours will be lost debugging this issue
+	// if not
+
+	// Todo: Add barycentric interpolation for textures
+	// and sub-pixel precision to reduce jittering
+
 	// Calculate bounding box around the tri
 	int xMin = std::min(std::min(p1.x, p2.x), p3.x);
 	int xMax = std::max(std::max(p1.x, p2.x), p3.x);
@@ -199,6 +271,7 @@ void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 
 			if (isInside)
 			{
+				//__debugbreak();
 				DrawPixel(x, y, color);
 			}
 		}
