@@ -18,14 +18,20 @@ public:
 	~Renderer();
 
 	void Render();
+
+	void ClearColor(Color color);
 	void ClearColor(int r, int g, int b);
+	void DrawColor(Color color);
 	void DrawColor(int r, int g, int b);
 
+	void DrawTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color);
 	void FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
 
+	void DrawRectangle(Vec2 start, Vec2 end, Color color);
 	void DrawRectangle(float startX, float startY, float endX, float endY, Color color);
 
+	void DrawLine(Vec2 p1, Vec2 p2, Color color);
 	void DrawLine(float x1, float y1, float x2, float y2, Color color);
 
 private:
@@ -37,7 +43,6 @@ private:
 	void BresenhamVertical(float x1, float y1, float x2, float y2, Color color);
 
 private:
-	void DemoCube();
 	void JavidDemo();
 
 private:
