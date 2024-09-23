@@ -72,10 +72,10 @@ public:
 		float cosTheta = cosf(theta);
 		float sinTheta = sinf(theta);
 		return {
-			cosTheta, 0.0f, sinTheta,	0.0f,
-			0.0f,	  1.0f,	0.0f,		0.0f,
+			cosTheta,  0.0f, sinTheta,	0.0f,
+			0.0f,	   1.0f, 0.0f,		0.0f,
 			-sinTheta, 0.0f, cosTheta,	0.0f,
-			0.0f,	  0.0f,	0.0f,		1.0f
+			0.0f,	   0.0f, 0.0f,		1.0f
 		};
 	}
 

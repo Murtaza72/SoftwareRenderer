@@ -109,7 +109,12 @@ inline Vec2 operator/(const Vec2& v, float t)
 	return (1 / t) * v;
 }
 
-inline float dot(const Vec2& u, const Vec2& v)
+inline float Dot(const Vec2& u, const Vec2& v)
 {
 	return u.x * v.x + u.y * v.y;
+}
+
+inline float Cross(const Vec2& u, const Vec2& v)
+{
+	return u.x * v.y - u.y * v.x;
 }
