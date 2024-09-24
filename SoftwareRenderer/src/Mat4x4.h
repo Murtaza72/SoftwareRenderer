@@ -110,7 +110,7 @@ inline Vec3 MultiplyMatrixVector(const Vec3& in, const Mat4x4& mat)
 
 inline Triangle TransformTriangle(const Triangle& in, const Mat4x4& mat)
 {
-	Triangle out;
+	Triangle out(in);
 	out.p[0] = MultiplyMatrixVector(in.p[0], mat);
 	out.p[1] = MultiplyMatrixVector(in.p[1], mat);
 	out.p[2] = MultiplyMatrixVector(in.p[2], mat);

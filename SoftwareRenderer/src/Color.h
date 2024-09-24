@@ -19,6 +19,15 @@ public:
 	}
 };
 
+inline Color operator* (Color color, float m)
+{
+	color.r *= m;
+	color.g *= m;
+	color.b *= m;
+
+	return color;
+}
+
 namespace Colors {
 	static Color White = Color(255u, 255u, 255u);
 	static Color Black = Color(0u, 0u, 0u);

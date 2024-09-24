@@ -6,10 +6,11 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 
 #include "Triangle.h"
 
-#define INVERT_Y_AXIS 1
+#define INVERT_Y_AXIS 0
 
 struct Mesh
 {
@@ -46,7 +47,7 @@ struct Mesh
 			{
 				int f[3];
 				s >> junk >> f[0] >> f[1] >> f[2];
-				Triangle t = { verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1] };
+				Triangle t = { verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1], Colors::Magenta };
 				tris.push_back(t);
 			}
 
@@ -71,6 +72,8 @@ Renderer::~Renderer()
 void Renderer::Render()
 {
 	JavidDemo();
+
+	//FillTriangle({ 100.0f,100.0f }, { 500.0f,500.0f }, { 100.0f,500.0f }, color);
 }
 
 void Renderer::JavidDemo()
@@ -107,12 +110,12 @@ void Renderer::JavidDemo()
 	Mat4x4 rotationMatY = Mat4x4::RotationY(theta);
 	Mat4x4 rotationMatZ = Mat4x4::RotationZ(theta);
 
-	#define INVERT_Y_AXIS 0
-
 	Camera cam;
 	cam.position = { 0.0f, 0.0f, 0.0f };
 
-	for (auto tri : cubeMesh.tris)
+	std::vector<Triangle> trisToRaster;
+
+	for (Triangle tri : cubeMesh.tris)
 	{
 		tri = TransformTriangle(tri, rotationMatX);
 		tri = TransformTriangle(tri, rotationMatY);
@@ -129,6 +132,15 @@ void Renderer::JavidDemo()
 
 		if (Dot(normal, { tri.p[0] - cam.position }) < 0.0f)
 		{
+			Vec3 LigthDir = Vec3(1.0f, -1.0f, 0.0f);
+			LigthDir = LigthDir.Normalize();
+
+			float dp = Dot(normal, LigthDir);
+			dp = std::max(0.1f, dp);
+
+			Color color = Colors::White * dp;
+			tri.color = color;
+
 			tri = TransformTriangle(tri, projectionMat);
 
 			// translate to middle of the screen
@@ -143,18 +155,32 @@ void Renderer::JavidDemo()
 			tri.p[2].x *= 0.5f * (float)GetWindowWidth();
 			tri.p[2].y *= 0.5f * (float)GetWindowHeight();
 
+			// hack to maintain clockwise order
 			std::swap(tri.p[1], tri.p[2]);
 
-			FillTriangle({ tri.p[0].x, tri.p[0].y },
-				{ tri.p[1].x, tri.p[1].y },
-				{ tri.p[2].x, tri.p[2].y }, Colors::Cyan
-			);
-
-			DrawTriangle(tri.p[0].x, tri.p[0].y,
-				tri.p[1].x, tri.p[1].y,
-				tri.p[2].x, tri.p[2].y, Colors::Magenta
-			);
+			trisToRaster.push_back(tri);
 		}
+	}
+
+	sort(trisToRaster.begin(), trisToRaster.end(), [](Triangle& t1, Triangle& t2)
+		{
+			float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z);
+			float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z);
+			return z1 > z2;
+		});
+
+	for (int i = 0; i < trisToRaster.size(); i++)
+	{
+		Triangle tri = trisToRaster[i];
+		FillTriangle({ tri.p[0].x, tri.p[0].y },
+			{ tri.p[1].x, tri.p[1].y },
+			{ tri.p[2].x, tri.p[2].y }, tri.color
+		);
+
+		DrawTriangle(tri.p[0].x, tri.p[0].y,
+			tri.p[1].x, tri.p[1].y,
+			tri.p[2].x, tri.p[2].y, Colors::Red
+		);
 	}
 }
 
@@ -244,7 +270,7 @@ void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 	// if not
 
 	// Todo: Add barycentric interpolation for textures
-	// and sub-pixel precision to reduce jittering
+	// Todo: sub-pixel precision to reduce jittering
 
 	// Calculate bounding box around the tri
 	int xMin = std::min(std::min(p1.x, p2.x), p3.x);
