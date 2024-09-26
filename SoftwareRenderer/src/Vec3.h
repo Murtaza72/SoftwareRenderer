@@ -98,6 +98,14 @@ inline Vec3 operator-(const Vec3& u, const Vec3& v)
 	return Vec3(u.x - v.x, u.y - v.y, u.z - v.z);
 }
 
+inline Vec3& operator-=(Vec3& u, const Vec3& v)
+{
+	u.x = u.x - v.x;
+	u.y = u.y - v.y;
+	u.z = u.z - v.z;
+	return u;
+}
+
 inline Vec3 operator*(float t, const Vec3& v)
 {
 	return Vec3(t * v.x, t * v.y, t * v.z);

@@ -1,14 +1,14 @@
 #include "Renderer.h"
 
 #include <iostream>
-#include <chrono>
-#include <thread>
 #include <vector>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <list>
 
 #include "Triangle.h"
+#include "Camera.h"
 
 #define INVERT_Y_AXIS 0
 
@@ -57,11 +57,6 @@ struct Mesh
 	}
 };
 
-struct Camera
-{
-	Vec3 position;
-};
-
 Renderer::~Renderer()
 {
 	SDL_DestroyRenderer(m_Renderer);
@@ -69,14 +64,12 @@ Renderer::~Renderer()
 	SDL_Quit();
 }
 
-void Renderer::Render()
+void Renderer::Render(Camera& camera)
 {
-	JavidDemo();
-
-	//FillTriangle({ 100.0f,100.0f }, { 500.0f,500.0f }, { 100.0f,500.0f }, color);
+	JavidDemo(camera);
 }
 
-void Renderer::JavidDemo()
+void Renderer::JavidDemo(Camera& cam)
 {
 	Mesh cubeMesh; // clockwise winding
 	//cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} });
@@ -92,7 +85,7 @@ void Renderer::JavidDemo()
 	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} });
 	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
 
-	if (!cubeMesh.LoadObject("./assets/ship.obj"))
+	if (!cubeMesh.LoadObject("./assets/axis.obj"))
 		std::cout << "Could not load the obj file!!!" << std::endl;
 
 	float theta = 0;
@@ -104,35 +97,49 @@ void Renderer::JavidDemo()
 
 	Mat4x4 projectionMat = Mat4x4::Projection(nearPlane, farPlane, aspectRatio, fov);
 
-	theta += SDL_GetTicks() / 4000.0f;
+	theta += SDL_GetTicks() / 2000.0f;
 
-	Mat4x4 rotationMatX = Mat4x4::RotationX(theta);
-	Mat4x4 rotationMatY = Mat4x4::RotationY(theta);
-	Mat4x4 rotationMatZ = Mat4x4::RotationZ(theta);
+	Mat4x4 rotationMatX = Mat4x4::RotationX(0);
+	Mat4x4 rotationMatY = Mat4x4::RotationY(0);
+	Mat4x4 rotationMatZ = Mat4x4::RotationZ(0);
+	Mat4x4 translateMat = Mat4x4::Translation(0.0f, 0.0f, 3.0f);
 
-	Camera cam;
-	cam.position = { 0.0f, 0.0f, 0.0f };
+	Mat4x4 worldMat = rotationMatX * rotationMatY * rotationMatZ * translateMat;
+
+	//cam.lookDir = { 0.0f,0.0f,1.0f };
+	Vec3 up(0.0f, 1.0f, 0.0f);
+	Vec3 target(0.0f, 0.0f, 1.0f);
+
+	Mat4x4 camRotation = Mat4x4::Identity();
+	//camRotation = camRotation * Mat4x4::RotationX(cam.roll);
+	camRotation = camRotation * Mat4x4::RotationY(cam.yaw);
+	//camRotation = camRotation * Mat4x4::RotationZ(cam.pitch);
+	cam.lookDir = MultiplyMatrixVector(target, camRotation);
+	target = cam.position + cam.lookDir;
+
+	cam.mat = Mat4x4::LookAt(cam.position, target, up);
+	cam.mat = Mat4x4::QuickInverse(cam.mat);
 
 	std::vector<Triangle> trisToRaster;
 
 	for (Triangle tri : cubeMesh.tris)
 	{
-		tri = TransformTriangle(tri, rotationMatX);
-		tri = TransformTriangle(tri, rotationMatY);
-		tri = TransformTriangle(tri, rotationMatZ);
+		tri = TransformTriangle(tri, cam.mat);
 
-		tri.p[0].z += 10.0f;
-		tri.p[1].z += 10.0f;
-		tri.p[2].z += 10.0f;
+		tri = TransformTriangle(tri, worldMat);
+
+		// translate
+		tri = TransformTriangle(tri, translateMat);
 
 		Vec3 line1 = tri.p[1] - tri.p[0];
 		Vec3 line2 = tri.p[2] - tri.p[0];
 		Vec3 normal = Cross(line1, line2);
 		normal = normal.Normalize();
 
+		// proceed if not back face culled
 		if (Dot(normal, { tri.p[0] - cam.position }) < 0.0f)
 		{
-			Vec3 LigthDir = Vec3(1.0f, -1.0f, 0.0f);
+			Vec3 LigthDir = Vec3(0.0f, 0.0f, -1.0f);
 			LigthDir = LigthDir.Normalize();
 
 			float dp = Dot(normal, LigthDir);
@@ -141,24 +148,39 @@ void Renderer::JavidDemo()
 			Color color = Colors::White * dp;
 			tri.color = color;
 
-			tri = TransformTriangle(tri, projectionMat);
+			// clipping
+			int clippedCount = 0;
+			Triangle clippedTri[2];
+			clippedCount = ClipAgainstPlane({ 0.0f, 0.0f, 0.7f }, { 0.0f, 0.0f, 1.0f }, tri, clippedTri[0], clippedTri[1]);
 
-			// translate to middle of the screen
-			tri.p[0] += Vec3(1.0f, 1.0f, 0.0f);
-			tri.p[1] += Vec3(1.0f, 1.0f, 0.0f);
-			tri.p[2] += Vec3(1.0f, 1.0f, 0.0f);
+			for (int n = 0; n < clippedCount; n++)
+			{
+				//tri = TransformTriangle(tri, projectionMat);
+				tri = TransformTriangle(clippedTri[n], projectionMat);
+				tri.color = clippedTri[n].color;
 
-			tri.p[0].x *= 0.5f * (float)GetWindowWidth();
-			tri.p[0].y *= 0.5f * (float)GetWindowHeight();
-			tri.p[1].x *= 0.5f * (float)GetWindowWidth();
-			tri.p[1].y *= 0.5f * (float)GetWindowHeight();
-			tri.p[2].x *= 0.5f * (float)GetWindowWidth();
-			tri.p[2].y *= 0.5f * (float)GetWindowHeight();
+				// invert x/y axis
+				tri.p[0].x *= -1.0f;
+				tri.p[1].x *= -1.0f;
+				tri.p[2].x *= -1.0f;
+				tri.p[0].y *= -1.0f;
+				tri.p[1].y *= -1.0f;
+				tri.p[2].y *= -1.0f;
 
-			// hack to maintain clockwise order
-			std::swap(tri.p[1], tri.p[2]);
+				// translate to middle of the screen
+				tri.p[0] += Vec3(1.0f, 1.0f, 0.0f);
+				tri.p[1] += Vec3(1.0f, 1.0f, 0.0f);
+				tri.p[2] += Vec3(1.0f, 1.0f, 0.0f);
 
-			trisToRaster.push_back(tri);
+				tri.p[0].x *= 0.5f * (float)GetWindowWidth();
+				tri.p[0].y *= 0.5f * (float)GetWindowHeight();
+				tri.p[1].x *= 0.5f * (float)GetWindowWidth();
+				tri.p[1].y *= 0.5f * (float)GetWindowHeight();
+				tri.p[2].x *= 0.5f * (float)GetWindowWidth();
+				tri.p[2].y *= 0.5f * (float)GetWindowHeight();
+
+				trisToRaster.push_back(tri);
+			}
 		}
 	}
 
@@ -169,18 +191,171 @@ void Renderer::JavidDemo()
 			return z1 > z2;
 		});
 
-	for (int i = 0; i < trisToRaster.size(); i++)
-	{
-		Triangle tri = trisToRaster[i];
-		FillTriangle({ tri.p[0].x, tri.p[0].y },
-			{ tri.p[1].x, tri.p[1].y },
-			{ tri.p[2].x, tri.p[2].y }, tri.color
-		);
+	#if 0
 
-		DrawTriangle(tri.p[0].x, tri.p[0].y,
-			tri.p[1].x, tri.p[1].y,
-			tri.p[2].x, tri.p[2].y, Colors::Red
-		);
+	//Clipping and Draw loop
+	for (const Triangle& tri : trisToRaster)
+	{
+		// Clip triangles against all four screen edges, this could yield
+		// a bunch of triangles, so create a queue that we traverse to 
+		//  ensure we only test new triangles generated against planes
+		Triangle clipped[2];
+		std::list<Triangle> queue;
+
+		queue.push_back(tri);
+		int nNewTriangles = 1;
+
+		for (int p = 0; p < 4; p++)
+		{
+			int nTrisToAdd = 0;
+			while (nNewTriangles > 0)
+			{
+				Triangle test = queue.front();
+				queue.pop_front();
+				nNewTriangles--;
+
+				// Clip it against a plane. We only need to test each 
+				// subsequent plane, against subsequent new triangles
+				// as all triangles after a plane clip are guaranteed
+				// to lie on the inside of the plane.
+				switch (p)
+				{
+				case 0:
+					nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, test, clipped[0], clipped[1]);
+					break;
+				case 1:
+					nTrisToAdd = ClipAgainstPlane({ 0.0f, (float)GetWindowHeight() - 1, 0.0f }, { 0.0f, -1.0f, 0.0f }, test, clipped[0], clipped[1]);
+					break;
+				case 2:
+					nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
+					break;
+				case 3:
+					nTrisToAdd = ClipAgainstPlane({ (float)GetWindowWidth() - 1, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
+					break;
+				}
+
+				// Clipping may yield a variable number of triangles, 
+				// add these new ones to the back of the queue 
+				for (int w = 0; w < nTrisToAdd; w++)
+					queue.push_back(clipped[w]);
+			}
+
+			nNewTriangles = queue.size();
+		}
+
+
+		// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
+		for (auto& tri : queue)
+		{
+			FillTriangle({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
+			//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
+		}
+	}
+
+	#else
+	for (auto& tri : trisToRaster)
+	{
+		FillTriangle({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
+		//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
+	}
+	#endif
+}
+
+Vec3 IntersectPlane(Vec3& planePoint, Vec3& planeNormal, Vec3& start, Vec3& end)
+{
+	planeNormal = planeNormal.Normalize();
+	float planeD = -Dot(planeNormal, planePoint);
+	float ad = Dot(start, planeNormal);
+	float bd = Dot(end, planeNormal);
+	float t = (-planeD - ad) / (bd - ad);
+	Vec3 line = end - start;
+	Vec3 lineIntersect = line * t;
+
+	return start + lineIntersect;
+}
+
+int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, Triangle& outTri1, Triangle& outTri2)
+{
+	planeNormal = planeNormal.Normalize();
+
+	auto dist = [&](Vec3& p)
+		{
+			Vec3 n = p.Normalize();
+			return Dot(planeNormal, p) - Dot(planeNormal, planePoint);
+		};
+
+	// positive sign if inside
+	Vec3* insidePoint[3];	int insidePointCount = 0;
+	Vec3* outsidePoint[3];	int outsidePointCount = 0;
+
+	float d0 = dist(in.p[0]);
+	float d1 = dist(in.p[1]);
+	float d2 = dist(in.p[2]);
+
+	if (d0 >= 0) { insidePoint[insidePointCount++] = &in.p[0]; }
+	else { outsidePoint[outsidePointCount++] = &in.p[0]; }
+
+	if (d1 >= 0) { insidePoint[insidePointCount++] = &in.p[1]; }
+	else { outsidePoint[outsidePointCount++] = &in.p[1]; }
+
+	if (d2 >= 0) { insidePoint[insidePointCount++] = &in.p[2]; }
+	else { outsidePoint[outsidePointCount++] = &in.p[2]; }
+
+	if (insidePointCount == 0)
+	{
+		// all points are outside
+		// no triangle is returned
+
+		return 0;
+	}
+
+	if (insidePointCount == 3)
+	{
+		// all points are inside
+		// return original triangle
+
+		outTri1 = in;
+		outTri1.color = in.color;
+
+		return 1;
+	}
+
+	if (outsidePointCount == 2 && insidePointCount == 1)
+	{
+		// plane intersects on two points
+		// original tri becomes small tri
+
+		outTri1 = in;
+		outTri1.color = Colors::Red;//in.color;
+
+		outTri1.p[0] = *insidePoint[0];
+
+		// calculate intersection points
+		outTri1.p[1] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[0]);
+		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[1]);
+
+		return 1;
+	}
+
+	if (outsidePointCount == 1 && insidePointCount == 2)
+	{
+		outTri1 = in;
+		outTri1.color = Colors::Blue;//in.color;
+
+		outTri2 = in;
+		outTri2.color = Colors::Green;//in.color;
+
+		// first tri is made of two inside points and one intersection point
+		outTri1.p[0] = *insidePoint[0];
+		outTri1.p[1] = *insidePoint[1];
+		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[0]);
+
+		// second tri is made of two intersection points and one inside point
+		outTri2.p[0] = *insidePoint[1];
+		outTri2.p[1] = outTri1.p[2];
+		outTri2.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[1], *outsidePoint[0]);
+
+		return 2;
 	}
 }
 
@@ -241,7 +416,7 @@ void Renderer::DrawLine(float x1, float y1, float x2, float y2, Color color)
 		BresenhamVertical(x1, y1, x2, y2, color);
 
 	//SDL_RenderPresent(m_Renderer);
-	//std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	//SDL_Delay(0.1);
 }
 
 int EdgeCross(Vec2 a, Vec2 b, Vec2 c)
@@ -264,13 +439,15 @@ bool IsTopLeftEdge(Vec2 start, Vec2 end)
 
 void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 {
-	// Attention: This function requires the points 
-	// to be in clockwise order, make sure it satisfies
-	// this constraint. Hours will be lost debugging this issue
-	// if not
-
 	// Todo: Add barycentric interpolation for textures
 	// Todo: sub-pixel precision to reduce jittering
+
+	float area = EdgeCross(p1, p2, p3);
+	// If the triangle is clockwise, swap two vertices to make it counterclockwise
+	if (area < 0)
+	{
+		std::swap(p2, p3);
+	}
 
 	// Calculate bounding box around the tri
 	int xMin = std::min(std::min(p1.x, p2.x), p3.x);

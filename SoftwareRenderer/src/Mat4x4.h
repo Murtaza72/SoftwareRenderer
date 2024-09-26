@@ -32,6 +32,16 @@ public:
 		return elements[x][y];
 	}
 
+	static Mat4x4 Identity()
+	{
+		return {
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		};
+	}
+
 	static Mat4x4 Translation(float x, float y, float z)
 	{
 		return {
@@ -90,11 +100,44 @@ public:
 			0.0f,		0.0f,	  0.0f,	1.0f
 		};
 	}
+
+	static Mat4x4 LookAt(const Vec3& pos, const Vec3& target, const Vec3& up)
+	{
+		Vec3 forward = target - pos;
+		forward = forward.Normalize();
+
+		Vec3 a = forward * Dot(up, forward);
+		Vec3 newUp = up - a;
+		newUp = newUp.Normalize();
+
+		Vec3 newRight = Cross(newUp, forward);
+
+		return {
+			newRight.x, newRight.y, newRight.z, 0.0f,
+			newUp.x,	newUp.y,	newUp.z,	0.0f,
+			forward.x,	forward.y,	forward.z,	0.0f,
+			pos.x,		pos.y,		pos.z,		1.0f
+		};
+	}
+
+	static Mat4x4 QuickInverse(const Mat4x4& mat)
+	{
+		float mat30 = mat(3, 0) * mat(0, 0) + mat(3, 1) * mat(0, 1) + mat(3, 2) * mat(0, 2);
+		float mat31 = mat(3, 0) * mat(1, 0) + mat(3, 1) * mat(1, 1) + mat(3, 2) * mat(1, 2);
+		float mat32 = mat(3, 0) * mat(2, 0) + mat(3, 1) * mat(2, 1) + mat(3, 2) * mat(2, 2);
+
+		return {
+			mat(0,0), mat(1,0), mat(2,0), 0.0f,
+			mat(0,1), mat(1,1), mat(2,1), 0.0f,
+			mat(0,2), mat(1,2), mat(2,2), 0.0f,
+			-mat30,	  -mat31,	-mat32,	  1.0f
+		};
+	}
 };
 
 inline Vec3 MultiplyMatrixVector(const Vec3& in, const Mat4x4& mat)
 {
-	Vec3 out;
+	Vec3 out(in);
 	out.x = in.x * mat(0, 0) + in.y * mat(1, 0) + in.z * mat(2, 0) + mat(3, 0);
 	out.y = in.x * mat(0, 1) + in.y * mat(1, 1) + in.z * mat(2, 1) + mat(3, 1);
 	out.z = in.x * mat(0, 2) + in.y * mat(1, 2) + in.z * mat(2, 2) + mat(3, 2);

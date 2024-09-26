@@ -6,6 +6,7 @@
 #include "Vec2.h"
 #include "Mat4x4.h"
 #include "Color.h"
+#include "Camera.h"
 
 class Renderer
 {
@@ -17,7 +18,7 @@ public:
 
 	~Renderer();
 
-	void Render();
+	void Render(Camera& camera);
 
 	void ClearColor(Color color);
 	void ClearColor(int r, int g, int b);
@@ -34,6 +35,8 @@ public:
 	void DrawLine(Vec2 p1, Vec2 p2, Color color);
 	void DrawLine(float x1, float y1, float x2, float y2, Color color);
 
+	int ClipAgainstPlane(Vec3 point, Vec3 plane, Triangle& in, Triangle& outTri1, Triangle& outTri2);
+
 private:
 	void DrawPixel(float x, float y, Color c);
 	void DrawPixel(float x, float y);
@@ -43,7 +46,7 @@ private:
 	void BresenhamVertical(float x1, float y1, float x2, float y2, Color color);
 
 private:
-	void JavidDemo();
+	void JavidDemo(Camera& camera);
 
 private:
 	int GetWindowWidth();
