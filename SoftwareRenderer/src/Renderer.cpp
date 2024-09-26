@@ -10,8 +10,6 @@
 #include "Triangle.h"
 #include "Camera.h"
 
-#define INVERT_Y_AXIS 0
-
 struct Mesh
 {
 	std::vector<Triangle> tris;
@@ -257,7 +255,7 @@ void Renderer::JavidDemo(Camera& cam)
 	{
 		FillTriangle({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
 		//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
-	}
+}
 	#endif
 }
 
@@ -531,12 +529,6 @@ void Renderer::BresenhamNaive(int x1, int y1, int x2, int y2)
 
 void Renderer::BresenhamHorizontal(float x1, float y1, float x2, float y2, Color color)
 {
-	// invert y-axis
-	#if INVERT_Y_AXIS
-	y1 = GetWindowHeight() - y1;
-	y2 = GetWindowHeight() - y2;
-	#endif
-
 	// Swap em
 	if (x1 > x2)
 	{
@@ -577,12 +569,6 @@ void Renderer::BresenhamHorizontal(float x1, float y1, float x2, float y2, Color
 
 void Renderer::BresenhamVertical(float x1, float y1, float x2, float y2, Color color)
 {
-	// invert y-axis
-	#if INVERT_Y_AXIS
-	y1 = GetWindowHeight() - y1;
-	y2 = GetWindowHeight() - y2;
-	#endif
-
 	// Swap em
 	if (y1 > y2)
 	{
