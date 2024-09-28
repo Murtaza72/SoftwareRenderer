@@ -4,8 +4,8 @@
 
 #include "Renderer.h"
 
-const int SCREEN_WIDTH = 900;
-const int SCREEN_HEIGHT = 900;
+const int SCREEN_WIDTH = 700;
+const int SCREEN_HEIGHT = 700;
 
 int HandleInput(SDL_Event event, float elapsedTime, Camera& cam);
 
@@ -45,7 +45,7 @@ int main()
 			break;
 
 		{
-			renderer.ClearColor(0, 0, 0);
+			renderer.ClearColor(Colors::Black);
 			renderer.Render(cam);
 			SDL_RenderPresent(SDLRenderer);
 		}

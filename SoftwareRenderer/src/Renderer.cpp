@@ -248,7 +248,7 @@ void Renderer::JavidDemo(Camera& cam)
 	}
 }
 
-Vec3 IntersectPlane(Vec3& planePoint, Vec3& planeNormal, Vec3& start, Vec3& end)
+Vec3 IntersectPlane(const Vec3& planePoint, Vec3& planeNormal, const Vec3& start, const Vec3& end)
 {
 	planeNormal = planeNormal.GetNormalized();
 	float planeD = -Dot(planeNormal, planePoint);
@@ -358,28 +358,14 @@ void Renderer::DrawPixel(float x, float y)
 
 void Renderer::ClearColor(Color color)
 {
-	ClearColor(color.r, color.g, color.b);
+	SDL_SetRenderDrawColor(m_Renderer, color.r, color.g, color.b, 0);
+	SDL_RenderClear(m_Renderer);
 }
 
 void Renderer::DrawColor(Color color)
 {
-	DrawColor(color.r, color.g, color.b);
-}
-
-void Renderer::ClearColor(int r, int g, int b)
-{
-	SDL_SetRenderDrawColor(m_Renderer, r, g, b, 0);
+	SDL_SetRenderDrawColor(m_Renderer, color.r, color.g, color.b, 255);
 	SDL_RenderClear(m_Renderer);
-}
-
-void Renderer::DrawColor(int r, int g, int b)
-{
-	SDL_SetRenderDrawColor(m_Renderer, r, g, b, 255);
-}
-
-void Renderer::DrawTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
-{
-	DrawTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, color);
 }
 
 void Renderer::DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color)
@@ -387,11 +373,6 @@ void Renderer::DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3
 	DrawLine(p1X, p1Y, p2X, p2Y, color);
 	DrawLine(p2X, p2Y, p3X, p3Y, color);
 	DrawLine(p3X, p3Y, p1X, p1Y, color);
-}
-
-void Renderer::DrawLine(Vec2 p1, Vec2 p2, Color color)
-{
-	DrawLine(p1.x, p1.y, p2.x, p2.y, color);
 }
 
 void Renderer::DrawLine(float x1, float y1, float x2, float y2, Color color)
@@ -465,17 +446,6 @@ void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 			}
 		}
 	}
-}
-
-void Renderer::DrawRectangle(Vec2 start, Vec2 end, Color color)
-{
-	DrawRectangle(start.x, start.y, end.x, end.y, color);
-}
-
-void Renderer::DrawRectangle(float startX, float startY, float endX, float endY, Color color)
-{
-	DrawTriangle(startX, startY, endX, startY, startX, endY, color);
-	DrawTriangle(endX, startY, endX, endY, startX, endY, color);
 }
 
 void Renderer::BresenhamNaive(int x1, int y1, int x2, int y2)
