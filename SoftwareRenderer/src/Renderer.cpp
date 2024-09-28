@@ -1,59 +1,12 @@
 #include "Renderer.h"
 
 #include <iostream>
-#include <vector>
-#include <fstream>
-#include <sstream>
 #include <algorithm>
 #include <list>
 
 #include "Triangle.h"
 #include "Camera.h"
-
-struct Mesh
-{
-	std::vector<Triangle> tris;
-
-	bool LoadObject(std::string filename)
-	{
-		std::ifstream f(filename);
-
-		if (!f.is_open())
-			return false;
-
-		std::vector<Vec3> verts;
-
-		while (!f.eof())
-		{
-			char line[128];
-			f.getline(line, 128);
-
-			std::stringstream s;
-
-			s << line;
-
-			char junk;
-
-			if (line[0] == 'v')
-			{
-				Vec3 v;
-				s >> junk >> v.x >> v.y >> v.z;
-				verts.push_back(v);
-			}
-
-			if (line[0] == 'f')
-			{
-				int f[3];
-				s >> junk >> f[0] >> f[1] >> f[2];
-				Triangle t = { verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1], Colors::Magenta };
-				tris.push_back(t);
-			}
-
-		}
-
-		return true;
-	}
-};
+#include "Mesh.h"
 
 Renderer::~Renderer()
 {
@@ -83,7 +36,7 @@ void Renderer::JavidDemo(Camera& cam)
 	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} });
 	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
 
-	if (!cubeMesh.LoadObject("./assets/ship.obj"))
+	if (!cubeMesh.LoadObject("./assets/mountains.obj"))
 		std::cout << "Could not load the obj file!!!" << std::endl;
 
 	float theta = 0;
@@ -120,7 +73,7 @@ void Renderer::JavidDemo(Camera& cam)
 
 	std::vector<Triangle> trisToRaster;
 
-	for (Triangle tri : cubeMesh.tris)
+	for (Triangle tri : cubeMesh.GetTriangles())
 	{
 		tri = TransformTriangle(tri, cam.mat);
 
@@ -137,11 +90,11 @@ void Renderer::JavidDemo(Camera& cam)
 		// proceed if not back face culled
 		if (Dot(normal, { tri.p[0] - cam.position }) < 0.0f)
 		{
-			Vec3 LigthDir = Vec3(0.0f, 0.0f, -1.0f);
+			Vec3 LigthDir = Vec3(0.0f, 1.0f, 0.0f);
 			LigthDir = LigthDir.GetNormalized();
 
 			float dp = Dot(normal, LigthDir);
-			dp = std::max(0.1f, dp);
+			dp = std::max(0.2f, dp);
 
 			Color color = Colors::White * dp;
 			tri.color = color;
@@ -149,7 +102,7 @@ void Renderer::JavidDemo(Camera& cam)
 			// clipping
 			int clippedCount = 0;
 			Triangle clippedTri[2];
-			clippedCount = ClipAgainstPlane({ 0.0f, 0.0f, 0.7f }, { 0.0f, 0.0f, 1.0f }, tri, clippedTri[0], clippedTri[1]);
+			clippedCount = ClipAgainstPlane({ 0.0f, 0.0f, nearPlane }, { 0.0f, 0.0f, 1.0f }, tri, clippedTri[0], clippedTri[1]);
 
 			for (int n = 0; n < clippedCount; n++)
 			{
@@ -383,7 +336,7 @@ void Renderer::DrawLine(float x1, float y1, float x2, float y2, Color color)
 		BresenhamVertical(x1, y1, x2, y2, color);
 
 	//SDL_RenderPresent(m_Renderer);
-	//SDL_Delay(0.1);
+	//SDL_Delay(10);
 }
 
 int EdgeCross(Vec2 a, Vec2 b, Vec2 c)

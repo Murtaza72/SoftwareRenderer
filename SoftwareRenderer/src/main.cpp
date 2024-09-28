@@ -1,6 +1,7 @@
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include <chrono>
+#include <string>
 
 #include "Renderer.h"
 
@@ -17,6 +18,7 @@ int main()
 
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, 0, &window, &SDLRenderer);
+	SDL_SetWindowTitle(window, "Software Renderer");
 
 	Renderer renderer(SDLRenderer, window);
 
@@ -50,9 +52,10 @@ int main()
 			SDL_RenderPresent(SDLRenderer);
 		}
 
-		uint32_t frameTime = SDL_GetTicks() - startTimer;
+		float frameTime = SDL_GetTicks() - startTimer;
 		float fps = (frameTime > 0) ? 1000.0f / frameTime : 0.0f;
-		printf("FPS: %f\r", fps);
+		std::string title = "Software Renderer FPS: " + std::to_string(fps);
+		SDL_SetWindowTitle(window, title.c_str());
 	}
 
 	return 0;
