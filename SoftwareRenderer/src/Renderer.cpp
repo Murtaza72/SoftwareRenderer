@@ -83,7 +83,7 @@ void Renderer::JavidDemo(Camera& cam)
 	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} });
 	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
 
-	if (!cubeMesh.LoadObject("./assets/axis.obj"))
+	if (!cubeMesh.LoadObject("./assets/ship.obj"))
 		std::cout << "Could not load the obj file!!!" << std::endl;
 
 	float theta = 0;
@@ -132,13 +132,13 @@ void Renderer::JavidDemo(Camera& cam)
 		Vec3 line1 = tri.p[1] - tri.p[0];
 		Vec3 line2 = tri.p[2] - tri.p[0];
 		Vec3 normal = Cross(line1, line2);
-		normal = normal.Normalize();
+		normal = normal.GetNormalized();
 
 		// proceed if not back face culled
 		if (Dot(normal, { tri.p[0] - cam.position }) < 0.0f)
 		{
 			Vec3 LigthDir = Vec3(0.0f, 0.0f, -1.0f);
-			LigthDir = LigthDir.Normalize();
+			LigthDir = LigthDir.GetNormalized();
 
 			float dp = Dot(normal, LigthDir);
 			dp = std::max(0.1f, dp);
@@ -157,7 +157,7 @@ void Renderer::JavidDemo(Camera& cam)
 				tri = TransformTriangle(clippedTri[n], projectionMat);
 				tri.color = clippedTri[n].color;
 
-				// invert x/y axis
+				//	 invert x/y axis
 				tri.p[0].x *= -1.0f;
 				tri.p[1].x *= -1.0f;
 				tri.p[2].x *= -1.0f;
@@ -189,14 +189,13 @@ void Renderer::JavidDemo(Camera& cam)
 			return z1 > z2;
 		});
 
-	#if 0
 
 	//Clipping and Draw loop
 	for (const Triangle& tri : trisToRaster)
 	{
 		// Clip triangles against all four screen edges, this could yield
 		// a bunch of triangles, so create a queue that we traverse to 
-		//  ensure we only test new triangles generated against planes
+		// ensure we only test new triangles generated
 		Triangle clipped[2];
 		std::list<Triangle> queue;
 
@@ -232,8 +231,7 @@ void Renderer::JavidDemo(Camera& cam)
 					break;
 				}
 
-				// Clipping may yield a variable number of triangles, 
-				// add these new ones to the back of the queue 
+				// add any newly generated tris to the end of queue
 				for (int w = 0; w < nTrisToAdd; w++)
 					queue.push_back(clipped[w]);
 			}
@@ -241,27 +239,18 @@ void Renderer::JavidDemo(Camera& cam)
 			nNewTriangles = queue.size();
 		}
 
-
 		// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
 		for (auto& tri : queue)
 		{
 			FillTriangle({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
-			//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
+			DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
 		}
 	}
-
-	#else
-	for (auto& tri : trisToRaster)
-	{
-		FillTriangle({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
-		//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
-}
-	#endif
 }
 
 Vec3 IntersectPlane(Vec3& planePoint, Vec3& planeNormal, Vec3& start, Vec3& end)
 {
-	planeNormal = planeNormal.Normalize();
+	planeNormal = planeNormal.GetNormalized();
 	float planeD = -Dot(planeNormal, planePoint);
 	float ad = Dot(start, planeNormal);
 	float bd = Dot(end, planeNormal);
@@ -274,11 +263,10 @@ Vec3 IntersectPlane(Vec3& planePoint, Vec3& planeNormal, Vec3& start, Vec3& end)
 
 int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, Triangle& outTri1, Triangle& outTri2)
 {
-	planeNormal = planeNormal.Normalize();
+	planeNormal.GetNormalized();
 
 	auto dist = [&](Vec3& p)
 		{
-			Vec3 n = p.Normalize();
 			return Dot(planeNormal, p) - Dot(planeNormal, planePoint);
 		};
 

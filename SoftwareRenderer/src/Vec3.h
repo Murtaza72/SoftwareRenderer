@@ -73,13 +73,14 @@ public:
 		return (x * x + y * y + z * z);
 	}
 
-	Vec3& Normalize()
+	Vec3 GetNormalized()
 	{
+		Vec3 n = *this;
 		float length = Length();
-		x /= length;
-		y /= length;
-		z /= length;
-		return *this;
+		n.x /= length;
+		n.y /= length;
+		n.z /= length;
+		return n;
 	}
 };
 

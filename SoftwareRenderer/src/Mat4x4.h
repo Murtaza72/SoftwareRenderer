@@ -104,11 +104,11 @@ public:
 	static Mat4x4 LookAt(const Vec3& pos, const Vec3& target, const Vec3& up)
 	{
 		Vec3 forward = target - pos;
-		forward = forward.Normalize();
+		forward = forward.GetNormalized();
 
 		Vec3 a = forward * Dot(up, forward);
 		Vec3 newUp = up - a;
-		newUp = newUp.Normalize();
+		newUp = newUp.GetNormalized();
 
 		Vec3 newRight = Cross(newUp, forward);
 
