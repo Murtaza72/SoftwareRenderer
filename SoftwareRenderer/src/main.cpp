@@ -39,7 +39,7 @@ int main()
 
 		// Handle Timing
 		auto now = std::chrono::system_clock::now();
-		std::chrono::duration<float> time = start - now;
+		std::chrono::duration<float> time = now - start;
 		start = now;
 		float elapsedTime = time.count();
 
@@ -68,7 +68,7 @@ int HandleInput(SDL_Event event, float elapsedTime, Camera& cam)
 		if (event.type == SDL_QUIT || event.key.keysym.sym == SDLK_ESCAPE)
 			return 0;
 
-		float mult = 10.0f * elapsedTime;
+		float mult = 10.0f * -elapsedTime;
 
 		switch (event.key.keysym.sym)
 		{

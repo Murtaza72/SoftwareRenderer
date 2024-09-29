@@ -36,7 +36,7 @@ void Renderer::JavidDemo(Camera& cam)
 	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} });
 	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
 
-	if (!cubeMesh.LoadObject("./assets/mountains.obj"))
+	if (!cubeMesh.LoadObject("./assets/teapot.obj"))
 		std::cout << "Could not load the obj file!!!" << std::endl;
 
 	float theta = 0;
@@ -73,7 +73,7 @@ void Renderer::JavidDemo(Camera& cam)
 
 	std::vector<Triangle> trisToRaster;
 
-	for (Triangle tri : cubeMesh.GetTriangles())
+	for (Triangle& tri : cubeMesh.GetTriangles())
 	{
 		tri = TransformTriangle(tri, cam.mat);
 
@@ -90,7 +90,7 @@ void Renderer::JavidDemo(Camera& cam)
 		// proceed if not back face culled
 		if (Dot(normal, { tri.p[0] - cam.position }) < 0.0f)
 		{
-			Vec3 LigthDir = Vec3(0.0f, 1.0f, 0.0f);
+			Vec3 LigthDir = Vec3(0.0f, 0.0f, -1.0f);
 			LigthDir = LigthDir.GetNormalized();
 
 			float dp = Dot(normal, LigthDir);
@@ -195,8 +195,8 @@ void Renderer::JavidDemo(Camera& cam)
 		// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
 		for (auto& tri : queue)
 		{
-			FillTriangle({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
-			DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
+			FillTriangleOptimized({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
+			//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
 		}
 	}
 }
@@ -339,7 +339,7 @@ void Renderer::DrawLine(float x1, float y1, float x2, float y2, Color color)
 	//SDL_Delay(10);
 }
 
-int EdgeCross(Vec2 a, Vec2 b, Vec2 c)
+float EdgeCross(Vec2 a, Vec2 b, Vec2 c)
 {
 	Vec2 ab = { b.x - a.x, b.y - a.y };
 	Vec2 ac = { c.x - a.x, c.y - a.y };
@@ -360,7 +360,6 @@ bool IsTopLeftEdge(Vec2 start, Vec2 end)
 void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 {
 	// Todo: Add barycentric interpolation for textures
-	// Todo: sub-pixel precision to reduce jittering
 
 	float area = EdgeCross(p1, p2, p3);
 	// If the triangle is clockwise, swap two vertices to make it counterclockwise
@@ -398,6 +397,68 @@ void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 				DrawPixel(x, y, color);
 			}
 		}
+	}
+}
+
+void Renderer::FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
+{
+	// crude observation suggests 2x speedup 
+	// proper profiling required from original
+
+	// Todo: Add barycentric interpolation for textures
+	// Todo: tile-based rendering using 4x4 and 8x8 pixels together for parallesation
+
+	float area = EdgeCross(p1, p2, p3);
+	// If the triangle is clockwise, swap two vertices to make it counterclockwise
+	if (area < 0)
+	{
+		std::swap(p2, p3);
+	}
+
+	// Calculate bounding box around the tri
+	int xMin = floor(std::min(std::min(p1.x, p2.x), p3.x));
+	int xMax = ceil(std::max(std::max(p1.x, p2.x), p3.x));
+	int yMin = floor(std::min(std::min(p1.y, p2.y), p3.y));
+	int yMax = ceil(std::max(std::max(p1.y, p2.y), p3.y));
+
+	// Determine if either top or left edge
+	float bias1 = IsTopLeftEdge(p1, p2) ? 0 : -0.001f;
+	float bias2 = IsTopLeftEdge(p2, p3) ? 0 : -0.001f;
+	float bias3 = IsTopLeftEdge(p3, p1) ? 0 : -0.001f;
+
+	float deltaW1Col = p2.y - p3.y, deltaW1Row = p3.x - p2.x;
+	float deltaW2Col = p3.y - p1.y, deltaW2Row = p1.x - p3.x;
+	float deltaW3Col = p1.y - p2.y, deltaW3Row = p2.x - p1.x;
+
+	Vec2 p = { (float)xMin + 0.5f , (float)yMin + 0.5f };
+
+	float w1Row = EdgeCross(p2, p3, p) + bias1;
+	float w2Row = EdgeCross(p3, p1, p) + bias2;
+	float w3Row = EdgeCross(p1, p2, p) + bias3;
+
+	for (int y = yMin; y <= yMax; y++)
+	{
+		float w2 = w2Row;
+		float w1 = w1Row;
+		float w3 = w3Row;
+
+		for (int x = xMin; x <= xMax; x++)
+		{
+			bool isInside = ((int)w1 | (int)w2 | (int)w3) >= 0;
+
+			if (isInside)
+			{
+				DrawPixel(x, y, color);
+			}
+
+			w1 += deltaW1Col;
+			w2 += deltaW2Col;
+			w3 += deltaW3Col;
+		}
+
+		w1Row += deltaW1Row;
+		w2Row += deltaW2Row;
+		w3Row += deltaW3Row;
 	}
 }
 

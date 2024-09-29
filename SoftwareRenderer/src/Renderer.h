@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL.h>
+#include <vector>
 
 #include "Vec3.h"
 #include "Vec2.h"
@@ -25,6 +26,7 @@ public:
 
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color);
 	void FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
+	void FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
 
 	void DrawLine(float x1, float y1, float x2, float y2, Color color);
 
