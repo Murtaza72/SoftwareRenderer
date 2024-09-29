@@ -22,22 +22,11 @@ void Renderer::Render(Camera& camera)
 
 void Renderer::JavidDemo(Camera& cam)
 {
-	Mesh cubeMesh; // clockwise winding
-	//cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} });
-	//cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
-	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} });
-	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 1.0f} });
-	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 1.0f} });
-	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f} });
-	//cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f} });
-	//cubeMesh.tris.push_back({ Vec3{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f} });
-	//cubeMesh.tris.push_back({ Vec3{0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f} });
-	//cubeMesh.tris.push_back({ Vec3{0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f} });
-	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} });
-	//cubeMesh.tris.push_back({ Vec3{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} });
+	Mesh cubeMesh;
+	//if (!cubeMesh.LoadObject("./assets/teapot.obj"))
+		//std::cout << "Could not load the obj file!!!" << std::endl;
 
-	if (!cubeMesh.LoadObject("./assets/teapot.obj"))
-		std::cout << "Could not load the obj file!!!" << std::endl;
+	cubeMesh.LoadCube();
 
 	float theta = 0;
 
@@ -46,7 +35,7 @@ void Renderer::JavidDemo(Camera& cam)
 	float fov = 90.0f;
 	float aspectRatio = (float)GetWindowWidth() / GetWindowHeight();
 
-	Mat4x4 projectionMat = Mat4x4::Projection(nearPlane, farPlane, aspectRatio, fov);
+	Mat4x4 projectionMat = Mat4x4::Projection(fov, aspectRatio, nearPlane, farPlane);
 
 	theta += SDL_GetTicks() / 2000.0f;
 

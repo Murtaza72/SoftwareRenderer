@@ -52,7 +52,7 @@ public:
 		};
 	}
 
-	static Mat4x4 Projection(float nearPlane, float farPlane, float aspectRatio, float fov)
+	static Mat4x4 Projection(float fov, float aspectRatio, float nearPlane, float farPlane)
 	{
 		float fovRad = 1.0f / tanf(fov * 0.5 / 180.0f * 3.1415f); // convert theta to radians
 		float z1 = farPlane / (farPlane - nearPlane);
