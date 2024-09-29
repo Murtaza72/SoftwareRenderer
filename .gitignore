@@ -14,3 +14,5 @@ Log/
 vendor/
 
 *.vcxproj*
+*.png
+*.jpg
