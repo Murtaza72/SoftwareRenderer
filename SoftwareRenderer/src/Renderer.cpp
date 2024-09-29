@@ -28,6 +28,8 @@ void Renderer::JavidDemo(Camera& cam)
 
 	cubeMesh.LoadCube();
 
+	Texture mario(SDL_GetWindowSurface(m_Window), "./assets/me.jpg");
+
 	float theta = 0;
 
 	float nearPlane = 0.1f;
@@ -43,10 +45,10 @@ void Renderer::JavidDemo(Camera& cam)
 	Mat4x4 rotationMatY = Mat4x4::RotationY(0);
 	Mat4x4 rotationMatZ = Mat4x4::RotationZ(0);
 	Mat4x4 translateMat = Mat4x4::Translation(0.0f, 0.0f, 3.0f);
+	Mat4x4 scaleMat = Mat4x4::Scale(10.0f, 10.0f, 10.0f);
 
-	Mat4x4 worldMat = rotationMatX * rotationMatY * rotationMatZ * translateMat;
+	Mat4x4 worldMat = scaleMat * rotationMatX * rotationMatY * rotationMatZ * translateMat;
 
-	//cam.lookDir = { 0.0f,0.0f,1.0f };
 	Vec3 up(0.0f, 1.0f, 0.0f);
 	Vec3 target(0.0f, 0.0f, 1.0f);
 
@@ -71,20 +73,22 @@ void Renderer::JavidDemo(Camera& cam)
 		// translate
 		tri = TransformTriangle(tri, translateMat);
 
-		Vec3 line1 = tri.p[1] - tri.p[0];
-		Vec3 line2 = tri.p[2] - tri.p[0];
-		Vec3 normal = Cross(line1, line2);
+		// calculate two vectors on triangles
+		// and their cross product
+		Vec3 line01 = tri.p[1] - tri.p[0];
+		Vec3 line02 = tri.p[2] - tri.p[0];
+		Vec3 normal = Cross(line01, line02);
 		normal = normal.GetNormalized();
 
 		// proceed if not back face culled
 		if (Dot(normal, { tri.p[0] - cam.position }) < 0.0f)
 		{
+			// check how much the triangle normal is facing the light dir 
+			// and shade it appropriately
 			Vec3 LigthDir = Vec3(0.0f, 0.0f, -1.0f);
 			LigthDir = LigthDir.GetNormalized();
-
 			float dp = Dot(normal, LigthDir);
 			dp = std::max(0.2f, dp);
-
 			Color color = Colors::White * dp;
 			tri.color = color;
 
@@ -99,7 +103,7 @@ void Renderer::JavidDemo(Camera& cam)
 				tri = TransformTriangle(clippedTri[n], projectionMat);
 				tri.color = clippedTri[n].color;
 
-				//	 invert x/y axis
+				// invert x/y axis
 				tri.p[0].x *= -1.0f;
 				tri.p[1].x *= -1.0f;
 				tri.p[2].x *= -1.0f;
@@ -184,7 +188,9 @@ void Renderer::JavidDemo(Camera& cam)
 		// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
 		for (auto& tri : queue)
 		{
-			FillTriangleOptimized({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
+			FillTriangleTextured({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y },
+				{ tri.texCoord[0].u, tri.texCoord[0].v }, { tri.texCoord[1].u, tri.texCoord[1].v }, { tri.texCoord[2].u, tri.texCoord[2].v }, mario);
+			//FillTriangleOptimized({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
 			//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
 		}
 	}
@@ -395,7 +401,7 @@ void Renderer::FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 	// proper profiling required from original
 
 	// Todo: Add barycentric interpolation for textures
-	// Todo: tile-based rendering using 4x4 and 8x8 pixels together for parallesation
+	// Todo: tile-based rendering using 4x4 and 8x8 pixels together for parallelization
 
 	float area = EdgeCross(p1, p2, p3);
 	// If the triangle is clockwise, swap two vertices to make it counterclockwise
@@ -437,6 +443,64 @@ void Renderer::FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 
 			if (isInside)
 			{
+				DrawPixel(x, y, color);
+			}
+
+			w1 += deltaW1Col;
+			w2 += deltaW2Col;
+			w3 += deltaW3Col;
+		}
+
+		w1Row += deltaW1Row;
+		w2Row += deltaW2Row;
+		w3Row += deltaW3Row;
+	}
+}
+
+void Renderer::FillTriangleTextured(Vec2 p1, Vec2 p2, Vec2 p3, TexCoord t1, TexCoord t2, TexCoord t3, Texture tex)
+{
+	float area = EdgeCross(p1, p2, p3);
+	if (area < 0)
+	{
+		std::swap(p2, p3);
+		std::swap(t2, t3);
+	}
+
+	// Calculate bounding box around the tri
+	int xMin = floor(std::min(std::min(p1.x, p2.x), p3.x));
+	int xMax = ceil(std::max(std::max(p1.x, p2.x), p3.x));
+	int yMin = floor(std::min(std::min(p1.y, p2.y), p3.y));
+	int yMax = ceil(std::max(std::max(p1.y, p2.y), p3.y));
+
+	// Determine if either top or left edge
+	float bias1 = IsTopLeftEdge(p1, p2) ? 0 : -0.001f;
+	float bias2 = IsTopLeftEdge(p2, p3) ? 0 : -0.001f;
+	float bias3 = IsTopLeftEdge(p3, p1) ? 0 : -0.001f;
+
+	float deltaW1Col = p2.y - p3.y, deltaW1Row = p3.x - p2.x;
+	float deltaW2Col = p3.y - p1.y, deltaW2Row = p1.x - p3.x;
+	float deltaW3Col = p1.y - p2.y, deltaW3Row = p2.x - p1.x;
+
+	Vec2 p = { (float)xMin + 0.5f , (float)yMin + 0.5f };
+
+	float w1Row = EdgeCross(p2, p3, p) + bias1;
+	float w2Row = EdgeCross(p3, p1, p) + bias2;
+	float w3Row = EdgeCross(p1, p2, p) + bias3;
+
+	for (int y = yMin; y <= yMax; y++)
+	{
+		float w2 = w2Row;
+		float w1 = w1Row;
+		float w3 = w3Row;
+
+		for (int x = xMin; x <= xMax; x++)
+		{
+			bool isInside = ((int)w1 | (int)w2 | (int)w3) >= 0;
+
+			if (isInside)
+			{
+				uint8_t r, g, b;
+				Color color = tex.GetRGB(x, y);
 				DrawPixel(x, y, color);
 			}
 

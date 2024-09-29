@@ -67,7 +67,7 @@ int HandleInput(SDL_Event event, float elapsedTime, Camera& cam)
 	{
 		if (event.type == SDL_QUIT || event.key.keysym.sym == SDLK_ESCAPE)
 			return 0;
-
+		
 		float mult = 10.0f * -elapsedTime;
 
 		switch (event.key.keysym.sym)

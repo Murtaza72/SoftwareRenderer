@@ -42,6 +42,16 @@ public:
 		};
 	}
 
+	static Mat4x4 Scale(float x = 1.0f, float y = 1.0f, float z = 1.0f)
+	{
+		return {
+			x,	  0.0f, 0.0f, 0.0f,
+			0.0f, y,    0.0f, 0.0f,
+			0.0f, 0.0f, z,    0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		};
+	}
+
 	static Mat4x4 Translation(float x, float y, float z)
 	{
 		return {

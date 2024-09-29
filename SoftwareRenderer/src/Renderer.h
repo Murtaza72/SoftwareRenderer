@@ -8,6 +8,7 @@
 #include "Mat4x4.h"
 #include "Color.h"
 #include "Camera.h"
+#include "Texture.h"
 
 class Renderer
 {
@@ -27,6 +28,7 @@ public:
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color);
 	void FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
 	void FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
+	void FillTriangleTextured(Vec2 p1, Vec2 p2, Vec2 p3, TexCoord t1, TexCoord t2, TexCoord t3, Texture tex);
 
 	void DrawLine(float x1, float y1, float x2, float y2, Color color);
 
