@@ -9,10 +9,8 @@
 class Mesh
 {
 public:
-	// disabled for now until I figure out how to integrate it with textures
-	#if 0 
 
-	bool LoadObject(std::string filename)
+	bool LoadObject(std::string filename, bool hasTexture = false)
 	{
 		std::ifstream f(filename);
 
@@ -20,6 +18,7 @@ public:
 			return false;
 
 		std::vector<Vec3> verts;
+		std::vector<TexCoord> texs;
 
 		while (!f.eof())
 		{
@@ -34,24 +33,62 @@ public:
 
 			if (line[0] == 'v')
 			{
-				Vec3 v;
-				s >> junk >> v.x >> v.y >> v.z;
-				verts.push_back(v);
+				if (line[1] == 't')
+				{
+					TexCoord tc;
+					s >> junk >> junk >> tc.u >> tc.v;
+					// A little hack for the spyro texture
+					tc.u = 1.0f - tc.u;
+					tc.v = 1.0f - tc.v;
+					texs.push_back(tc);
+				}
+				else
+				{
+					Vec3 v;
+					s >> junk >> v.x >> v.y >> v.z;
+					verts.push_back(v);
+				}
 			}
 
-			if (line[0] == 'f')
+			if (!hasTexture)
 			{
-				int f[3];
-				s >> junk >> f[0] >> f[1] >> f[2];
-				Triangle t = { verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1] };
-				m_Tris.push_back(t);
+				if (line[0] == 'f')
+				{
+					int f[3]; TexCoord dummy{ 0.0f, 0.0f, 0.0f };
+					s >> junk >> f[0] >> f[1] >> f[2];
+					Triangle t = { verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1], dummy ,dummy, dummy, Colors::Magenta };
+					m_Tris.push_back(t);
+				}
 			}
+			else
+			{
+				if (line[0] == 'f')
+				{
+					s >> junk;
 
+					std::string tokens[6];
+					int tokenCount = -1;
+
+					while (!s.eof())
+					{
+						char c = s.get();
+						if (c == ' ' || c == '/')
+							tokenCount++;
+						else
+							tokens[tokenCount].append(1, c);
+					}
+
+					tokens[tokenCount].pop_back();
+
+					m_Tris.push_back({ verts[std::stoi(tokens[0]) - 1], verts[std::stoi(tokens[2]) - 1], verts[std::stoi(tokens[4]) - 1],
+						texs[std::stoi(tokens[1]) - 1], texs[std::stoi(tokens[3]) - 1], texs[std::stoi(tokens[5]) - 1] });
+
+				}
+			}
 		}
 
 		return true;
 	}
-	#endif
 
 	void Add(Triangle tri)
 	{

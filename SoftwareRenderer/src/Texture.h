@@ -68,7 +68,7 @@ private:
 
 	uint32_t GetPixel(float x, float y)
 	{
-		Uint8* p = (Uint8*)m_Texture->pixels + (int)y * m_Texture->pitch + (int)x * 4;
+		Uint8* p = (Uint8*)m_Texture->pixels + (int)y * m_Texture->pitch + (int)x * 4; // bpp=4
 
 		return *(Uint32*)p;
 	}

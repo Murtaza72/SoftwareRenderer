@@ -8,7 +8,7 @@
 #include "Camera.h"
 #include "Mesh.h"
 
-#define ROTATE 1
+#define ROTATE 0
 
 Renderer::~Renderer()
 {
@@ -25,10 +25,10 @@ void Renderer::Render(Camera& camera)
 void Renderer::JavidDemo(Camera& cam)
 {
 	Mesh cubeMesh;
-	//if (!cubeMesh.LoadObject("./assets/teapot.obj"))
-		//std::cout << "Could not load the obj file!!!" << std::endl;
+	if (!cubeMesh.LoadObject("./assets/ship.obj"), false)
+		std::cout << "Could not load the obj file!!!" << std::endl;
 
-	cubeMesh.LoadCube();
+	//cubeMesh.LoadCube();
 
 	float theta = 0;
 
@@ -48,7 +48,7 @@ void Renderer::JavidDemo(Camera& cam)
 	Mat4x4 rotationMatX = Mat4x4::RotationX(theta);
 	Mat4x4 rotationMatY = Mat4x4::RotationY(theta);
 	Mat4x4 rotationMatZ = Mat4x4::RotationZ(theta);
-	Mat4x4 translateMat = Mat4x4::Translation(0.0f, 0.0f, 3.0f);
+	Mat4x4 translateMat = Mat4x4::Translation(0.0f, 0.0f, 10.0f);
 	Mat4x4 scaleMat = Mat4x4::Scale(3.0f, 3.0f, 3.0f);
 
 	Mat4x4 worldMat = scaleMat * rotationMatX * rotationMatY * rotationMatZ * translateMat;
@@ -132,13 +132,14 @@ void Renderer::JavidDemo(Camera& cam)
 		}
 	}
 
+	/*
 	sort(trisToRaster.begin(), trisToRaster.end(), [](Triangle& t1, Triangle& t2)
 		{
 			float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z);
 			float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z);
 			return z1 > z2;
 		});
-
+	*/
 
 	//Clipping and Draw loop
 	for (const Triangle& tri : trisToRaster)
@@ -192,9 +193,9 @@ void Renderer::JavidDemo(Camera& cam)
 		// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
 		for (auto& tri : queue)
 		{
-			FillTriangleTextured({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y },
-				{ tri.tc[0].u, tri.tc[0].v }, { tri.tc[1].u, tri.tc[1].v }, { tri.tc[2].u, tri.tc[2].v }, m_Texture);
-			//FillTriangleOptimized({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
+			//FillTriangleTextured(tri.p[0], tri.p[1], tri.p[2],
+				//{ tri.tc[0].u, tri.tc[0].v }, { tri.tc[1].u, tri.tc[1].v }, { tri.tc[2].u, tri.tc[2].v }, m_Texture);
+			FillTriangleOptimized(tri.p[0], tri.p[1], tri.p[2], tri.color);
 			//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
 		}
 	}
@@ -372,6 +373,11 @@ void Renderer::DrawColor(Color color)
 	SDL_RenderClear(m_Renderer);
 }
 
+void Renderer::ClearDepth()
+{
+	std::memset(m_DepthBuffer, 0.0f, (sizeof(float) * GetWindowWidth() * GetWindowHeight()));
+}
+
 void Renderer::DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color)
 {
 	DrawLine(p1X, p1Y, p2X, p2Y, color);
@@ -407,8 +413,6 @@ bool IsTopLeftEdge(Vec2 start, Vec2 end)
 
 void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 {
-	// Todo: Add barycentric interpolation for textures
-
 	float area = EdgeCross(p1, p2, p3);
 	// If the triangle is clockwise, swap two vertices to make it counterclockwise
 	if (area < 0)
@@ -441,19 +445,17 @@ void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 
 			if (isInside)
 			{
-				//__debugbreak();
 				DrawPixel(x, y, color);
 			}
 		}
 	}
 }
 
-void Renderer::FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
+void Renderer::FillTriangleOptimized(Vec3 p1, Vec3 p2, Vec3 p3, Color color)
 {
 	// crude observation suggests 2x speedup 
 	// proper profiling required from original
 
-	// Todo: Add barycentric interpolation for textures
 	// Todo: tile-based rendering using 4x4 and 8x8 pixels together for parallelization
 
 	float area = EdgeCross(p1, p2, p3);
@@ -461,7 +463,10 @@ void Renderer::FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 	if (area < 0)
 	{
 		std::swap(p2, p3);
+		area = -area;
 	}
+
+	float invArea = 1.0f / area;
 
 	// Calculate bounding box around the tri
 	int xMin = floor(std::min(std::min(p1.x, p2.x), p3.x));
@@ -492,11 +497,18 @@ void Renderer::FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 
 		for (int x = xMin; x <= xMax; x++)
 		{
-			bool isInside = ((int)w1 | (int)w2 | (int)w3) >= 0;
+			bool isInside = w1 >= 0 && w2 >= 0 && w3 >= 0;
 
 			if (isInside)
 			{
-				DrawPixel(x, y, color);
+				float z = 1.0f / (((w1 * invArea) * p1.z) + ((w2 * invArea) * p2.z) + ((w3 * invArea) * p3.z));
+
+				float d = m_DepthBuffer[y * GetWindowWidth() + x];
+				if (z > d)
+				{
+					m_DepthBuffer[y * GetWindowWidth() + x] = z;
+					DrawPixel(x, y, color);
+				}
 			}
 
 			w1 += deltaW1Col;
@@ -510,7 +522,7 @@ void Renderer::FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 	}
 }
 
-void Renderer::FillTriangleTextured(Vec2 p1, Vec2 p2, Vec2 p3, TexCoord t1, TexCoord t2, TexCoord t3, Texture tex)
+void Renderer::FillTriangleTextured(Vec3 p1, Vec3 p2, Vec3 p3, TexCoord t1, TexCoord t2, TexCoord t3, Texture tex)
 {
 	float area = EdgeCross(p1, p2, p3);
 	if (area < 0)
@@ -562,8 +574,14 @@ void Renderer::FillTriangleTextured(Vec2 p1, Vec2 p2, Vec2 p3, TexCoord t1, TexC
 				float u = (L1 * t1.u) + (L2 * t2.u) + (L3 * t3.u);
 				float v = (L1 * t1.v) + (L2 * t2.v) + (L3 * t3.v);
 
-				Color color = tex.GetRGB(u, v);
-				DrawPixel(x, y, color);
+				float z = 1.0f / ((L1 * p1.z) + (L2 * p2.z) + (L3 * p3.z));
+
+				if (z > m_DepthBuffer[y * GetWindowWidth() + x])
+				{
+					m_DepthBuffer[y * GetWindowWidth() + x] = z;
+					Color color = tex.GetRGB(u, v);
+					DrawPixel(x, y, color);
+				}
 			}
 
 			w1 += deltaW1Col;

@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cmath>
 
+#include "Vec3.h"
+
 class Vec2
 {
 public:
@@ -16,6 +18,11 @@ public:
 
 	Vec2(float x, float y)
 		: x(x), y(y)
+	{
+	}
+
+	Vec2(Vec3 v)
+		: x(v.x), y(v.y)
 	{
 	}
 

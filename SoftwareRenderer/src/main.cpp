@@ -51,6 +51,7 @@ int main()
 
 		{
 			renderer.ClearColor(Colors::Black);
+			renderer.ClearDepth();
 			renderer.Render(cam);
 			SDL_RenderPresent(SDLRenderer);
 		}

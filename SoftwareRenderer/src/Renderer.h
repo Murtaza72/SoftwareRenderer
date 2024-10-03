@@ -16,6 +16,7 @@ public:
 	Renderer(SDL_Renderer* renderer, SDL_Window* window, Texture& tex)
 		: m_Renderer(renderer), m_Window(window), m_Texture(tex)
 	{
+		m_DepthBuffer = new float[GetWindowWidth() * GetWindowHeight()];
 	}
 
 	~Renderer();
@@ -25,10 +26,12 @@ public:
 	void ClearColor(Color color);
 	void DrawColor(Color color);
 
+	void ClearDepth();
+
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color);
 	void FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
-	void FillTriangleOptimized(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
-	void FillTriangleTextured(Vec2 p1, Vec2 p2, Vec2 p3, TexCoord t1, TexCoord t2, TexCoord t3, Texture tex);
+	void FillTriangleOptimized(Vec3 p1, Vec3 p2, Vec3 p3, Color color);
+	void FillTriangleTextured(Vec3 p1, Vec3 p2, Vec3 p3, TexCoord t1, TexCoord t2, TexCoord t3, Texture tex);
 
 	void DrawLine(float x1, float y1, float x2, float y2, Color color);
 
@@ -56,4 +59,5 @@ private:
 	SDL_Window* m_Window;
 
 	Texture m_Texture;
+	float* m_DepthBuffer = nullptr;
 };
