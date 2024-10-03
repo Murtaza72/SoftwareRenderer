@@ -8,6 +8,8 @@
 #include "Camera.h"
 #include "Mesh.h"
 
+#define ROTATE 1
+
 Renderer::~Renderer()
 {
 	SDL_DestroyRenderer(m_Renderer);
@@ -28,8 +30,6 @@ void Renderer::JavidDemo(Camera& cam)
 
 	cubeMesh.LoadCube();
 
-	Texture mario(SDL_GetWindowSurface(m_Window), "./assets/me.jpg");
-
 	float theta = 0;
 
 	float nearPlane = 0.1f;
@@ -39,13 +39,17 @@ void Renderer::JavidDemo(Camera& cam)
 
 	Mat4x4 projectionMat = Mat4x4::Projection(fov, aspectRatio, nearPlane, farPlane);
 
+	#if ROTATE
 	theta += SDL_GetTicks() / 2000.0f;
+	#else
+	//theta = 0.0f;
+	#endif
 
-	Mat4x4 rotationMatX = Mat4x4::RotationX(0);
-	Mat4x4 rotationMatY = Mat4x4::RotationY(0);
-	Mat4x4 rotationMatZ = Mat4x4::RotationZ(0);
+	Mat4x4 rotationMatX = Mat4x4::RotationX(theta);
+	Mat4x4 rotationMatY = Mat4x4::RotationY(theta);
+	Mat4x4 rotationMatZ = Mat4x4::RotationZ(theta);
 	Mat4x4 translateMat = Mat4x4::Translation(0.0f, 0.0f, 3.0f);
-	Mat4x4 scaleMat = Mat4x4::Scale(10.0f, 10.0f, 10.0f);
+	Mat4x4 scaleMat = Mat4x4::Scale(3.0f, 3.0f, 3.0f);
 
 	Mat4x4 worldMat = scaleMat * rotationMatX * rotationMatY * rotationMatZ * translateMat;
 
@@ -189,22 +193,22 @@ void Renderer::JavidDemo(Camera& cam)
 		for (auto& tri : queue)
 		{
 			FillTriangleTextured({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y },
-				{ tri.texCoord[0].u, tri.texCoord[0].v }, { tri.texCoord[1].u, tri.texCoord[1].v }, { tri.texCoord[2].u, tri.texCoord[2].v }, mario);
+				{ tri.tc[0].u, tri.tc[0].v }, { tri.tc[1].u, tri.tc[1].v }, { tri.tc[2].u, tri.tc[2].v }, m_Texture);
 			//FillTriangleOptimized({ tri.p[0].x, tri.p[0].y }, { tri.p[1].x, tri.p[1].y }, { tri.p[2].x, tri.p[2].y }, tri.color);
 			//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
 		}
 	}
 }
 
-Vec3 IntersectPlane(const Vec3& planePoint, Vec3& planeNormal, const Vec3& start, const Vec3& end)
+Vec3 IntersectPlane(const Vec3& planePoint, Vec3& planeNormal, const Vec3& start, const Vec3& end, float& interpolant)
 {
 	planeNormal = planeNormal.GetNormalized();
 	float planeD = -Dot(planeNormal, planePoint);
 	float ad = Dot(start, planeNormal);
 	float bd = Dot(end, planeNormal);
-	float t = (-planeD - ad) / (bd - ad);
+	interpolant = (-planeD - ad) / (bd - ad);
 	Vec3 line = end - start;
-	Vec3 lineIntersect = line * t;
+	Vec3 lineIntersect = line * interpolant;
 
 	return start + lineIntersect;
 }
@@ -221,19 +225,45 @@ int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, 
 	// positive sign if inside
 	Vec3* insidePoint[3];	int insidePointCount = 0;
 	Vec3* outsidePoint[3];	int outsidePointCount = 0;
+	TexCoord* insideTex[3];	int insideTexCount = 0;
+	TexCoord* outsideTex[3]; int outsideTexCount = 0;
 
 	float d0 = dist(in.p[0]);
 	float d1 = dist(in.p[1]);
 	float d2 = dist(in.p[2]);
 
-	if (d0 >= 0) { insidePoint[insidePointCount++] = &in.p[0]; }
-	else { outsidePoint[outsidePointCount++] = &in.p[0]; }
+	if (d0 >= 0)
+	{
+		insidePoint[insidePointCount++] = &in.p[0];
+		insideTex[insideTexCount++] = &in.tc[0];
+	}
+	else
+	{
+		outsidePoint[outsidePointCount++] = &in.p[0];
+		outsideTex[outsideTexCount++] = &in.tc[0];
+	}
 
-	if (d1 >= 0) { insidePoint[insidePointCount++] = &in.p[1]; }
-	else { outsidePoint[outsidePointCount++] = &in.p[1]; }
+	if (d1 >= 0)
+	{
+		insidePoint[insidePointCount++] = &in.p[1];
+		insideTex[insideTexCount++] = &in.tc[1];
+	}
+	else
+	{
+		outsidePoint[outsidePointCount++] = &in.p[1];
+		outsideTex[outsideTexCount++] = &in.tc[1];
+	}
 
-	if (d2 >= 0) { insidePoint[insidePointCount++] = &in.p[2]; }
-	else { outsidePoint[outsidePointCount++] = &in.p[2]; }
+	if (d2 >= 0)
+	{
+		insidePoint[insidePointCount++] = &in.p[2];
+		insideTex[insideTexCount++] = &in.tc[2];
+	}
+	else
+	{
+		outsidePoint[outsidePointCount++] = &in.p[2];
+		outsideTex[outsideTexCount++] = &in.tc[2];
+	}
 
 	if (insidePointCount == 0)
 	{
@@ -260,13 +290,25 @@ int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, 
 		// original tri becomes small tri
 
 		outTri1 = in;
-		outTri1.color = Colors::Red;//in.color;
+		outTri1.color = in.color;
 
 		outTri1.p[0] = *insidePoint[0];
+		outTri1.tc[0] = *insideTex[0];
+
+		// but the two new points are at the locations where the
+		// original sides of the triangle intersect with the plane
+		float interpolant;
 
 		// calculate intersection points
-		outTri1.p[1] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[0]);
-		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[1]);
+		outTri1.p[1] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[0], interpolant);
+		outTri1.tc[1].u = interpolant * (outsideTex[0]->u - insideTex[0]->u) + insideTex[0]->u;
+		outTri1.tc[1].v = interpolant * (outsideTex[0]->v - insideTex[0]->v) + insideTex[0]->v;
+		outTri1.tc[1].w = interpolant * (outsideTex[0]->w - insideTex[0]->w) + insideTex[0]->w;
+
+		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[1], interpolant);
+		outTri1.tc[2].u = interpolant * (outsideTex[1]->u - insideTex[0]->u) + insideTex[0]->u;
+		outTri1.tc[2].v = interpolant * (outsideTex[1]->v - insideTex[0]->v) + insideTex[0]->v;
+		outTri1.tc[2].w = interpolant * (outsideTex[1]->w - insideTex[0]->w) + insideTex[0]->w;
 
 		return 1;
 	}
@@ -274,20 +316,34 @@ int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, 
 	if (outsidePointCount == 1 && insidePointCount == 2)
 	{
 		outTri1 = in;
-		outTri1.color = Colors::Blue;//in.color;
+		outTri1.color = in.color;
 
 		outTri2 = in;
-		outTri2.color = Colors::Green;//in.color;
+		outTri2.color = in.color;
+
+		float interpolant;
 
 		// first tri is made of two inside points and one intersection point
 		outTri1.p[0] = *insidePoint[0];
 		outTri1.p[1] = *insidePoint[1];
-		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[0]);
+		outTri1.tc[0] = *insideTex[0];
+		outTri1.tc[1] = *insideTex[1];
+
+		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[0], interpolant);
+		outTri1.tc[2].u = interpolant * (outsideTex[0]->u - insideTex[0]->u) + insideTex[0]->u;
+		outTri1.tc[2].v = interpolant * (outsideTex[0]->v - insideTex[0]->v) + insideTex[0]->v;
+		outTri1.tc[2].w = interpolant * (outsideTex[0]->w - insideTex[0]->w) + insideTex[0]->w;
 
 		// second tri is made of two intersection points and one inside point
 		outTri2.p[0] = *insidePoint[1];
 		outTri2.p[1] = outTri1.p[2];
-		outTri2.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[1], *outsidePoint[0]);
+		outTri2.tc[0] = *insideTex[1];
+		outTri2.tc[1] = outTri1.tc[2];
+
+		outTri2.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[1], *outsidePoint[0], interpolant);
+		outTri2.tc[2].u = interpolant * (outsideTex[0]->u - insideTex[1]->u) + insideTex[1]->u;
+		outTri2.tc[2].v = interpolant * (outsideTex[0]->v - insideTex[1]->v) + insideTex[1]->v;
+		outTri2.tc[2].w = interpolant * (outsideTex[0]->w - insideTex[1]->w) + insideTex[1]->w;
 
 		return 2;
 	}
@@ -329,9 +385,6 @@ void Renderer::DrawLine(float x1, float y1, float x2, float y2, Color color)
 		BresenhamHorizontal(x1, y1, x2, y2, color);
 	else
 		BresenhamVertical(x1, y1, x2, y2, color);
-
-	//SDL_RenderPresent(m_Renderer);
-	//SDL_Delay(10);
 }
 
 float EdgeCross(Vec2 a, Vec2 b, Vec2 c)
@@ -464,7 +517,10 @@ void Renderer::FillTriangleTextured(Vec2 p1, Vec2 p2, Vec2 p3, TexCoord t1, TexC
 	{
 		std::swap(p2, p3);
 		std::swap(t2, t3);
+		area = -area;
 	}
+
+	float invArea = 1.0f / area;
 
 	// Calculate bounding box around the tri
 	int xMin = floor(std::min(std::min(p1.x, p2.x), p3.x));
@@ -489,18 +545,24 @@ void Renderer::FillTriangleTextured(Vec2 p1, Vec2 p2, Vec2 p3, TexCoord t1, TexC
 
 	for (int y = yMin; y <= yMax; y++)
 	{
-		float w2 = w2Row;
 		float w1 = w1Row;
+		float w2 = w2Row;
 		float w3 = w3Row;
 
 		for (int x = xMin; x <= xMax; x++)
 		{
-			bool isInside = ((int)w1 | (int)w2 | (int)w3) >= 0;
+			bool isInside = w1 >= 0.0f && w2 >= 0.0f && w3 >= 0.0f;
 
 			if (isInside)
 			{
-				uint8_t r, g, b;
-				Color color = tex.GetRGB(x, y);
+				float L1 = w1 * invArea;
+				float L2 = w2 * invArea;
+				float L3 = w3 * invArea;
+
+				float u = (L1 * t1.u) + (L2 * t2.u) + (L3 * t3.u);
+				float v = (L1 * t1.v) + (L2 * t2.v) + (L3 * t3.v);
+
+				Color color = tex.GetRGB(u, v);
 				DrawPixel(x, y, color);
 			}
 
@@ -644,4 +706,9 @@ int Renderer::GetWindowHeight()
 	int height;
 	SDL_GetWindowSize(m_Window, nullptr, &height);
 	return height;
+}
+
+void Renderer::Present()
+{
+	SDL_RenderPresent(m_Renderer);
 }

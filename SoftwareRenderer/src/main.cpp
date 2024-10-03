@@ -4,6 +4,7 @@
 #include <string>
 
 #include "Renderer.h"
+#include "Texture.h"
 
 const int SCREEN_WIDTH = 700;
 const int SCREEN_HEIGHT = 700;
@@ -20,7 +21,9 @@ int main()
 	SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, 0, &window, &SDLRenderer);
 	SDL_SetWindowTitle(window, "Software Renderer");
 
-	Renderer renderer(SDLRenderer, window);
+	Texture t(SDL_GetWindowSurface(window), "./assets/me.jpg");
+
+	Renderer renderer(SDLRenderer, window, t);
 
 	Camera cam;
 	cam.position = Vec3(0.0f, 0.0f, 0.0f);
@@ -67,7 +70,7 @@ int HandleInput(SDL_Event event, float elapsedTime, Camera& cam)
 	{
 		if (event.type == SDL_QUIT || event.key.keysym.sym == SDLK_ESCAPE)
 			return 0;
-		
+
 		float mult = 10.0f * -elapsedTime;
 
 		switch (event.key.keysym.sym)

@@ -5,12 +5,14 @@
 
 struct TexCoord
 {
-	float u, v;
+	float u = 0;
+	float v = 0;
+	float w = 1;
 };
 
 struct Triangle
 {
 	Vec3 p[3];
+	TexCoord tc[3];
 	Color color = Colors::Magenta;
-	TexCoord texCoord[3];
 };

@@ -13,8 +13,8 @@
 class Renderer
 {
 public:
-	Renderer(SDL_Renderer* renderer, SDL_Window* window)
-		: m_Renderer(renderer), m_Window(window)
+	Renderer(SDL_Renderer* renderer, SDL_Window* window, Texture& tex)
+		: m_Renderer(renderer), m_Window(window), m_Texture(tex)
 	{
 	}
 
@@ -34,6 +34,8 @@ public:
 
 	int ClipAgainstPlane(Vec3 point, Vec3 plane, Triangle& in, Triangle& outTri1, Triangle& outTri2);
 
+	void Present();
+
 private:
 	void DrawPixel(float x, float y, Color c);
 	void DrawPixel(float x, float y);
@@ -52,4 +54,6 @@ private:
 private:
 	SDL_Renderer* m_Renderer;
 	SDL_Window* m_Window;
+
+	Texture m_Texture;
 };

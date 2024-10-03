@@ -9,6 +9,9 @@
 class Mesh
 {
 public:
+	// disabled for now until I figure out how to integrate it with textures
+	#if 0 
+
 	bool LoadObject(std::string filename)
 	{
 		std::ifstream f(filename);
@@ -40,7 +43,7 @@ public:
 			{
 				int f[3];
 				s >> junk >> f[0] >> f[1] >> f[2];
-				Triangle t = { verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1], Colors::Magenta };
+				Triangle t = { verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1] };
 				m_Tris.push_back(t);
 			}
 
@@ -48,6 +51,7 @@ public:
 
 		return true;
 	}
+	#endif
 
 	void Add(Triangle tri)
 	{
@@ -62,21 +66,22 @@ public:
 	void LoadCube()
 	{
 		m_Tris.clear();
+		m_Tris.reserve(12);
 
 		//original javid cube
 		// clockwise winding
-		Add({ Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 0.0f) });
-		Add({ Vec3(0.0f, 0.0f, 0.0f), Vec3(1.0f, 1.0f, 0.0f), Vec3(1.0f, 0.0f, 0.0f) });
-		Add({ Vec3(1.0f, 0.0f, 0.0f), Vec3(1.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 1.0f) });
-		Add({ Vec3(1.0f, 0.0f, 0.0f), Vec3(1.0f, 1.0f, 1.0f), Vec3(1.0f, 0.0f, 1.0f) });
-		Add({ Vec3(1.0f, 0.0f, 1.0f), Vec3(1.0f, 1.0f, 1.0f), Vec3(0.0f, 1.0f, 1.0f) });
-		Add({ Vec3(1.0f, 0.0f, 1.0f), Vec3(0.0f, 1.0f, 1.0f), Vec3(0.0f, 0.0f, 1.0f) });
-		Add({ Vec3(0.0f, 0.0f, 1.0f), Vec3(0.0f, 1.0f, 1.0f), Vec3(0.0f, 1.0f, 0.0f) });
-		Add({ Vec3(0.0f, 0.0f, 1.0f), Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 0.0f, 0.0f) });
-		Add({ Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 1.0f, 1.0f), Vec3(1.0f, 1.0f, 1.0f) });
-		Add({ Vec3(0.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 1.0f), Vec3(1.0f, 1.0f, 0.0f) });
-		Add({ Vec3(1.0f, 0.0f, 1.0f), Vec3(0.0f, 0.0f, 1.0f), Vec3(0.0f, 0.0f, 0.0f) });
-		Add({ Vec3(1.0f, 0.0f, 1.0f), Vec3(0.0f, 0.0f, 0.0f), Vec3(1.0f, 0.0f, 0.0f) });
+		Add({ Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 0.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{0.0f, 0.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f} });
+		Add({ Vec3(0.0f, 0.0f, 0.0f), Vec3(1.0f, 1.0f, 0.0f), Vec3(1.0f, 0.0f, 0.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f}, TexCoord{1.0f, 1.0f, 1.0f} });
+		Add({ Vec3(1.0f, 0.0f, 0.0f), Vec3(1.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 1.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{0.0f, 0.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f} });
+		Add({ Vec3(1.0f, 0.0f, 0.0f), Vec3(1.0f, 1.0f, 1.0f), Vec3(1.0f, 0.0f, 1.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f}, TexCoord{1.0f, 1.0f, 1.0f} });
+		Add({ Vec3(1.0f, 0.0f, 1.0f), Vec3(1.0f, 1.0f, 1.0f), Vec3(0.0f, 1.0f, 1.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{0.0f, 0.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f} });
+		Add({ Vec3(1.0f, 0.0f, 1.0f), Vec3(0.0f, 1.0f, 1.0f), Vec3(0.0f, 0.0f, 1.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f}, TexCoord{1.0f, 1.0f, 1.0f} });
+		Add({ Vec3(0.0f, 0.0f, 1.0f), Vec3(0.0f, 1.0f, 1.0f), Vec3(0.0f, 1.0f, 0.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{0.0f, 0.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f} });
+		Add({ Vec3(0.0f, 0.0f, 1.0f), Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 0.0f, 0.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f}, TexCoord{1.0f, 1.0f, 1.0f} });
+		Add({ Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 1.0f, 1.0f), Vec3(1.0f, 1.0f, 1.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{0.0f, 0.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f} });
+		Add({ Vec3(0.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 1.0f), Vec3(1.0f, 1.0f, 0.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f}, TexCoord{1.0f, 1.0f, 1.0f} });
+		Add({ Vec3(1.0f, 0.0f, 1.0f), Vec3(0.0f, 0.0f, 1.0f), Vec3(0.0f, 0.0f, 0.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{0.0f, 0.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f} });
+		Add({ Vec3(1.0f, 0.0f, 1.0f), Vec3(0.0f, 0.0f, 0.0f), Vec3(1.0f, 0.0f, 0.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f}, TexCoord{1.0f, 1.0f, 1.0f} });
 	}
 
 private:

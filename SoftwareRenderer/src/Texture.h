@@ -10,16 +10,18 @@ class Texture
 {
 public:
 	Texture(SDL_Surface* windowSurface, std::string filename)
-		: m_Texture(nullptr), m_ScreenSurface(windowSurface)
+		: m_Texture(nullptr)
 	{
 		if (Init())
 		{
-			LoadSurface(filename);
+			LoadSurface(windowSurface, filename);
 		}
 	}
 
 	Color GetRGB(float x, float y)
 	{
+		x *= m_Texture->w;
+		y *= m_Texture->h;
 		Uint32 color = GetPixel(x, y);
 
 		SDL_PixelFormat* fmt = m_Texture->format;
@@ -44,7 +46,7 @@ private:
 		return 1;
 	}
 
-	void LoadSurface(std::string filename)
+	void LoadSurface(SDL_Surface* windowSurface, std::string filename)
 	{
 		SDL_Surface* loadedSurface = IMG_Load(filename.c_str());
 		if (loadedSurface == NULL)
@@ -54,7 +56,7 @@ private:
 		else
 		{
 			//Convert surface to screen format
-			m_Texture = SDL_ConvertSurface(loadedSurface, m_ScreenSurface->format, 0);
+			m_Texture = SDL_ConvertSurface(loadedSurface, windowSurface->format, 0);
 			if (m_Texture == NULL)
 			{
 				std::cout << "Unable to optimize image " << filename.c_str() << "SDL Error: " << SDL_GetError() << std::endl;
@@ -72,5 +74,4 @@ private:
 	}
 private:
 	SDL_Surface* m_Texture;
-	SDL_Surface* m_ScreenSurface;
 };
