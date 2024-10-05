@@ -41,16 +41,15 @@ void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
 		Vec3 normal = Cross(line01, line02);
 		normal = normal.GetNormalized();
 
-		// cull current tri if its a back face
+		// cull tri if its a back face
 		if (Dot(normal, { tri.p[0] - cam.position }) > 0.0f) continue;
 
 		// check how much the triangle normal is facing the light dir 
 		// and shade it appropriately
-		Vec3 LigthDir = Vec3(0.0f, 0.0f, -1.0f);
-		LigthDir = LigthDir.GetNormalized();
-		float dp = Dot(normal, LigthDir);
+		m_Light.dir = m_Light.dir.GetNormalized();
+		float dp = Dot(normal, m_Light.dir);
 		dp = std::max(0.2f, dp);
-		Color color = Colors::White * dp;
+		Color color = m_Light.color * dp;
 		tri.color = color;
 
 		// clipping
@@ -165,6 +164,12 @@ void Renderer::SetTexture(Texture& tex)
 void Renderer::SetTransform(Mat4x4& world)
 {
 	m_WorldMat = world;
+}
+
+void Renderer::SetLightSource(Light& light)
+{
+	m_Light.dir = light.dir;
+	m_Light.color = light.color;
 }
 
 Vec3 IntersectPlane(const Vec3& planePoint, Vec3& planeNormal, const Vec3& start, const Vec3& end, float& interpolant)
@@ -314,6 +319,8 @@ int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, 
 
 		return 2;
 	}
+
+	return -1;	// debug only
 }
 
 void Renderer::DrawPixel(float x, float y, Color color)

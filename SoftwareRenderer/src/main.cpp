@@ -26,6 +26,11 @@ int main()
 	Renderer renderer(SDLRenderer, window);
 	renderer.SetTexture(t);
 
+	Light light;
+	light.dir = { 1.0f,1.0f,-1.0f };
+	light.color = Colors::White;
+	renderer.SetLightSource(light);
+
 	float nearPlane = 0.1f;
 	float farPlane = 1000.0f;
 	float fov = 90.0f;
@@ -71,10 +76,10 @@ int main()
 			break;
 
 		{
-			#define ROTATE 0
+			#define ROTATE
 
 			float theta = 0;
-			#if ROTATE
+			#ifdef ROTATE
 			theta += SDL_GetTicks() / 2000.0f;
 			#else
 			theta = 0.0f;

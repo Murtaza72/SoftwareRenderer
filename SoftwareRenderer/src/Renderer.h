@@ -20,6 +20,12 @@ enum RENDER_FLAGS
 	RENDER_TEXTURED = 0x04,
 };
 
+struct Light
+{
+	Vec3 dir = Vec3(0.0f, 0.0f, -1.0f);
+	Color color = Colors::Magenta;
+};
+
 class Renderer
 {
 public:
@@ -33,6 +39,7 @@ public:
 	void SetProjection(float fov, float aspectRatio, float nearPlane, float farPlane);
 	void SetTexture(Texture& tex);
 	void SetTransform(Mat4x4& world);
+	void SetLightSource(Light& light);
 
 	void Render(Mesh& mesh, Camera& camera, int flags = RENDER_FLAT | RENDER_WIRE);
 
@@ -73,5 +80,7 @@ private:
 	float* m_DepthBuffer = nullptr;
 
 	Mat4x4 m_ProjectionMat, m_WorldMat;
-	float m_NearPlane;
+	float m_NearPlane = 0.1f;
+
+	Light m_Light;
 };
