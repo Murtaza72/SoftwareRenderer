@@ -9,6 +9,10 @@
 class Texture
 {
 public:
+	Texture()
+	{
+	}
+
 	Texture(SDL_Surface* windowSurface, std::string filename)
 		: m_Texture(nullptr)
 	{

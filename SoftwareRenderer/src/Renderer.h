@@ -1,33 +1,47 @@
 #pragma once
 
 #include <SDL.h>
+
 #include <vector>
 
-#include "Vec3.h"
-#include "Vec2.h"
-#include "Mat4x4.h"
-#include "Color.h"
 #include "Camera.h"
+#include "Color.h"
+#include "Mat4x4.h"
+#include "Mesh.h"
 #include "Texture.h"
+#include "Triangle.h"
+#include "Vec2.h"
+#include "Vec3.h"
+
+enum RENDER_FLAGS
+{
+	RENDER_WIRE = 0x01,
+	RENDER_FLAT = 0x02,
+	RENDER_TEXTURED = 0x04,
+};
 
 class Renderer
 {
 public:
-	Renderer(SDL_Renderer* renderer, SDL_Window* window, Texture& tex)
-		: m_Renderer(renderer), m_Window(window), m_Texture(tex)
+	Renderer(SDL_Renderer* renderer, SDL_Window* window)
+		: m_Renderer(renderer), m_Window(window)
 	{
 		m_DepthBuffer = new float[GetWindowWidth() * GetWindowHeight()];
 	}
 
 	~Renderer();
+	void SetProjection(float fov, float aspectRatio, float nearPlane, float farPlane);
+	void SetTexture(Texture& tex);
+	void SetTransform(Mat4x4& world);
 
-	void Render(Camera& camera);
+	void Render(Mesh& mesh, Camera& camera, int flags = RENDER_FLAT | RENDER_WIRE);
 
 	void ClearColor(Color color);
 	void DrawColor(Color color);
 
 	void ClearDepth();
 
+	void DrawTriangle(Triangle& tri, Color color);
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color);
 	void FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
 	void FillTriangleOptimized(Vec3 p1, Vec3 p2, Vec3 p3, Color color);
@@ -48,9 +62,6 @@ private:
 	void BresenhamVertical(float x1, float y1, float x2, float y2, Color color);
 
 private:
-	void JavidDemo(Camera& camera);
-
-private:
 	int GetWindowWidth();
 	int GetWindowHeight();
 
@@ -60,4 +71,7 @@ private:
 
 	Texture m_Texture;
 	float* m_DepthBuffer = nullptr;
+
+	Mat4x4 m_ProjectionMat, m_WorldMat;
+	float m_NearPlane;
 };

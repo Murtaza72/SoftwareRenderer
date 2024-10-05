@@ -23,7 +23,28 @@ int main()
 
 	Texture t(SDL_GetWindowSurface(window), "./assets/me.jpg");
 
-	Renderer renderer(SDLRenderer, window, t);
+	Renderer renderer(SDLRenderer, window);
+	renderer.SetTexture(t);
+
+	float nearPlane = 0.1f;
+	float farPlane = 1000.0f;
+	float fov = 90.0f;
+	float aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
+	renderer.SetProjection(fov, aspectRatio, nearPlane, farPlane);
+
+	int flags = RENDER_FLAT | RENDER_WIRE;
+
+	Mesh cubeMesh;
+	if (flags & RENDER_TEXTURED)
+	{
+		cubeMesh.LoadCube();
+	}
+
+	if (flags & RENDER_FLAT)
+	{
+		if (!cubeMesh.LoadObject("./assets/ship.obj"), false)
+			std::cout << "Could not load the obj file!!!" << std::endl;
+	}
 
 	Camera cam;
 	cam.position = Vec3(0.0f, 0.0f, 0.0f);
@@ -50,10 +71,30 @@ int main()
 			break;
 
 		{
+			#define ROTATE 0
+
+			float theta = 0;
+			#if ROTATE
+			theta += SDL_GetTicks() / 2000.0f;
+			#else
+			theta = 0.0f;
+			#endif
+
+			Mat4x4 rotationMatX = Mat4x4::RotationX(theta);
+			Mat4x4 rotationMatY = Mat4x4::RotationY(theta);
+			Mat4x4 rotationMatZ = Mat4x4::RotationZ(theta);
+			Mat4x4 translateMat = Mat4x4::Translation(0.0f, 0.0f, 5.0f);
+			Mat4x4 scaleMat = Mat4x4::Scale();
+
+			Mat4x4 worldMat = scaleMat * rotationMatX * rotationMatY * rotationMatZ * translateMat;
+			renderer.SetTransform(worldMat);
+		}
+
+		{
 			renderer.ClearColor(Colors::Black);
 			renderer.ClearDepth();
-			renderer.Render(cam);
-			SDL_RenderPresent(SDLRenderer);
+			renderer.Render(cubeMesh, cam, flags);
+			renderer.Present();
 		}
 
 		float frameTime = SDL_GetTicks() - startTimer;

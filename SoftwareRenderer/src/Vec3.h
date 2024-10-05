@@ -77,9 +77,12 @@ public:
 	{
 		Vec3 n = *this;
 		float length = Length();
-		n.x /= length;
-		n.y /= length;
-		n.z /= length;
+		if (length != 0.0f)
+		{
+			n.x /= length;
+			n.y /= length;
+			n.z /= length;
+		}
 		return n;
 	}
 };

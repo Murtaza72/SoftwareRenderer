@@ -4,12 +4,6 @@
 #include <algorithm>
 #include <list>
 
-#include "Triangle.h"
-#include "Camera.h"
-#include "Mesh.h"
-
-#define ROTATE 0
-
 Renderer::~Renderer()
 {
 	SDL_DestroyRenderer(m_Renderer);
@@ -17,42 +11,8 @@ Renderer::~Renderer()
 	SDL_Quit();
 }
 
-void Renderer::Render(Camera& camera)
+void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
 {
-	JavidDemo(camera);
-}
-
-void Renderer::JavidDemo(Camera& cam)
-{
-	Mesh cubeMesh;
-	if (!cubeMesh.LoadObject("./assets/ship.obj"), false)
-		std::cout << "Could not load the obj file!!!" << std::endl;
-
-	//cubeMesh.LoadCube();
-
-	float theta = 0;
-
-	float nearPlane = 0.1f;
-	float farPlane = 1000.0f;
-	float fov = 90.0f;
-	float aspectRatio = (float)GetWindowWidth() / GetWindowHeight();
-
-	Mat4x4 projectionMat = Mat4x4::Projection(fov, aspectRatio, nearPlane, farPlane);
-
-	#if ROTATE
-	theta += SDL_GetTicks() / 2000.0f;
-	#else
-	//theta = 0.0f;
-	#endif
-
-	Mat4x4 rotationMatX = Mat4x4::RotationX(theta);
-	Mat4x4 rotationMatY = Mat4x4::RotationY(theta);
-	Mat4x4 rotationMatZ = Mat4x4::RotationZ(theta);
-	Mat4x4 translateMat = Mat4x4::Translation(0.0f, 0.0f, 10.0f);
-	Mat4x4 scaleMat = Mat4x4::Scale(3.0f, 3.0f, 3.0f);
-
-	Mat4x4 worldMat = scaleMat * rotationMatX * rotationMatY * rotationMatZ * translateMat;
-
 	Vec3 up(0.0f, 1.0f, 0.0f);
 	Vec3 target(0.0f, 0.0f, 1.0f);
 
@@ -68,14 +28,11 @@ void Renderer::JavidDemo(Camera& cam)
 
 	std::vector<Triangle> trisToRaster;
 
-	for (Triangle& tri : cubeMesh.GetTriangles())
+	for (Triangle& tri : mesh.GetTriangles())
 	{
 		tri = TransformTriangle(tri, cam.mat);
 
-		tri = TransformTriangle(tri, worldMat);
-
-		// translate
-		tri = TransformTriangle(tri, translateMat);
+		tri = TransformTriangle(tri, m_WorldMat);
 
 		// calculate two vectors on triangles
 		// and their cross product
@@ -84,121 +41,130 @@ void Renderer::JavidDemo(Camera& cam)
 		Vec3 normal = Cross(line01, line02);
 		normal = normal.GetNormalized();
 
-		// proceed if not back face culled
-		if (Dot(normal, { tri.p[0] - cam.position }) < 0.0f)
+		// cull current tri if its a back face
+		if (Dot(normal, { tri.p[0] - cam.position }) > 0.0f) continue;
+
+		// check how much the triangle normal is facing the light dir 
+		// and shade it appropriately
+		Vec3 LigthDir = Vec3(0.0f, 0.0f, -1.0f);
+		LigthDir = LigthDir.GetNormalized();
+		float dp = Dot(normal, LigthDir);
+		dp = std::max(0.2f, dp);
+		Color color = Colors::White * dp;
+		tri.color = color;
+
+		// clipping
+		int clippedCount = 0;
+		Triangle clippedTri[2];
+		clippedCount = ClipAgainstPlane({ 0.0f, 0.0f, m_NearPlane }, { 0.0f, 0.0f, 1.0f }, tri, clippedTri[0], clippedTri[1]);
+
+		for (int n = 0; n < clippedCount; n++)
 		{
-			// check how much the triangle normal is facing the light dir 
-			// and shade it appropriately
-			Vec3 LigthDir = Vec3(0.0f, 0.0f, -1.0f);
-			LigthDir = LigthDir.GetNormalized();
-			float dp = Dot(normal, LigthDir);
-			dp = std::max(0.2f, dp);
-			Color color = Colors::White * dp;
-			tri.color = color;
+			tri = TransformTriangle(clippedTri[n], m_ProjectionMat);
+			tri.color = clippedTri[n].color;
 
-			// clipping
-			int clippedCount = 0;
-			Triangle clippedTri[2];
-			clippedCount = ClipAgainstPlane({ 0.0f, 0.0f, nearPlane }, { 0.0f, 0.0f, 1.0f }, tri, clippedTri[0], clippedTri[1]);
+			// invert x/y axis
+			tri.p[0].x *= -1.0f;
+			tri.p[1].x *= -1.0f;
+			tri.p[2].x *= -1.0f;
+			tri.p[0].y *= -1.0f;
+			tri.p[1].y *= -1.0f;
+			tri.p[2].y *= -1.0f;
 
-			for (int n = 0; n < clippedCount; n++)
+			// translate to middle of the screen
+			tri.p[0] += Vec3(1.0f, 1.0f, 0.0f);
+			tri.p[1] += Vec3(1.0f, 1.0f, 0.0f);
+			tri.p[2] += Vec3(1.0f, 1.0f, 0.0f);
+
+			tri.p[0].x *= 0.5f * (float)GetWindowWidth();
+			tri.p[0].y *= 0.5f * (float)GetWindowHeight();
+			tri.p[1].x *= 0.5f * (float)GetWindowWidth();
+			tri.p[1].y *= 0.5f * (float)GetWindowHeight();
+			tri.p[2].x *= 0.5f * (float)GetWindowWidth();
+			tri.p[2].y *= 0.5f * (float)GetWindowHeight();
+
+			// Clip triangles against all four screen edges, this could yield
+			// a bunch of triangles, so create a queue that we traverse to 
+			// ensure we only test new triangles generated
+			Triangle clipped[2];
+			std::list<Triangle> queue;
+
+			queue.push_back(tri);
+			int nNewTriangles = 1;
+
+			for (int p = 0; p < 4; p++)
 			{
-				//tri = TransformTriangle(tri, projectionMat);
-				tri = TransformTriangle(clippedTri[n], projectionMat);
-				tri.color = clippedTri[n].color;
-
-				// invert x/y axis
-				tri.p[0].x *= -1.0f;
-				tri.p[1].x *= -1.0f;
-				tri.p[2].x *= -1.0f;
-				tri.p[0].y *= -1.0f;
-				tri.p[1].y *= -1.0f;
-				tri.p[2].y *= -1.0f;
-
-				// translate to middle of the screen
-				tri.p[0] += Vec3(1.0f, 1.0f, 0.0f);
-				tri.p[1] += Vec3(1.0f, 1.0f, 0.0f);
-				tri.p[2] += Vec3(1.0f, 1.0f, 0.0f);
-
-				tri.p[0].x *= 0.5f * (float)GetWindowWidth();
-				tri.p[0].y *= 0.5f * (float)GetWindowHeight();
-				tri.p[1].x *= 0.5f * (float)GetWindowWidth();
-				tri.p[1].y *= 0.5f * (float)GetWindowHeight();
-				tri.p[2].x *= 0.5f * (float)GetWindowWidth();
-				tri.p[2].y *= 0.5f * (float)GetWindowHeight();
-
-				trisToRaster.push_back(tri);
-			}
-		}
-	}
-
-	/*
-	sort(trisToRaster.begin(), trisToRaster.end(), [](Triangle& t1, Triangle& t2)
-		{
-			float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z);
-			float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z);
-			return z1 > z2;
-		});
-	*/
-
-	//Clipping and Draw loop
-	for (const Triangle& tri : trisToRaster)
-	{
-		// Clip triangles against all four screen edges, this could yield
-		// a bunch of triangles, so create a queue that we traverse to 
-		// ensure we only test new triangles generated
-		Triangle clipped[2];
-		std::list<Triangle> queue;
-
-		queue.push_back(tri);
-		int nNewTriangles = 1;
-
-		for (int p = 0; p < 4; p++)
-		{
-			int nTrisToAdd = 0;
-			while (nNewTriangles > 0)
-			{
-				Triangle test = queue.front();
-				queue.pop_front();
-				nNewTriangles--;
-
-				// Clip it against a plane. We only need to test each 
-				// subsequent plane, against subsequent new triangles
-				// as all triangles after a plane clip are guaranteed
-				// to lie on the inside of the plane.
-				switch (p)
+				int nTrisToAdd = 0;
+				while (nNewTriangles > 0)
 				{
-				case 0:
-					nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, test, clipped[0], clipped[1]);
-					break;
-				case 1:
-					nTrisToAdd = ClipAgainstPlane({ 0.0f, (float)GetWindowHeight() - 1, 0.0f }, { 0.0f, -1.0f, 0.0f }, test, clipped[0], clipped[1]);
-					break;
-				case 2:
-					nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
-					break;
-				case 3:
-					nTrisToAdd = ClipAgainstPlane({ (float)GetWindowWidth() - 1, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
-					break;
+					Triangle test = queue.front();
+					queue.pop_front();
+					nNewTriangles--;
+
+					// Clip it against a plane. We only need to test each 
+					// subsequent plane, against subsequent new triangles
+					// as all triangles after a plane clip are guaranteed
+					// to lie on the inside of the plane.
+					switch (p)
+					{
+					case 0:
+						nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, test, clipped[0], clipped[1]);
+						break;
+					case 1:
+						nTrisToAdd = ClipAgainstPlane({ 0.0f, (float)GetWindowHeight() - 1, 0.0f }, { 0.0f, -1.0f, 0.0f }, test, clipped[0], clipped[1]);
+						break;
+					case 2:
+						nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
+						break;
+					case 3:
+						nTrisToAdd = ClipAgainstPlane({ (float)GetWindowWidth() - 1, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
+						break;
+					}
+
+					// add any newly generated tris to the end of queue
+					for (int w = 0; w < nTrisToAdd; w++)
+						queue.push_back(clipped[w]);
 				}
 
-				// add any newly generated tris to the end of queue
-				for (int w = 0; w < nTrisToAdd; w++)
-					queue.push_back(clipped[w]);
+				nNewTriangles = queue.size();
 			}
 
-			nNewTriangles = queue.size();
-		}
+			// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
+			for (auto& tri : queue)
+			{
+				if (flags & RENDER_WIRE)
+				{
+					DrawTriangle(tri, Colors::Red);
+				}
 
-		// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
-		for (auto& tri : queue)
-		{
-			//FillTriangleTextured(tri.p[0], tri.p[1], tri.p[2],
-				//{ tri.tc[0].u, tri.tc[0].v }, { tri.tc[1].u, tri.tc[1].v }, { tri.tc[2].u, tri.tc[2].v }, m_Texture);
-			FillTriangleOptimized(tri.p[0], tri.p[1], tri.p[2], tri.color);
-			//DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
+				if (flags & RENDER_FLAT)
+				{
+					FillTriangleOptimized(tri.p[0], tri.p[1], tri.p[2], tri.color);
+				}
+
+				if (flags & RENDER_TEXTURED)
+				{
+					FillTriangleTextured(tri.p[0], tri.p[1], tri.p[2], tri.tc[0], tri.tc[1], tri.tc[2], m_Texture);
+				}
+			}
 		}
 	}
+}
+
+void Renderer::SetProjection(float fov, float aspectRatio, float nearPlane, float farPlane)
+{
+	m_ProjectionMat = Mat4x4::Projection(fov, aspectRatio, nearPlane, farPlane);
+	m_NearPlane = nearPlane;
+}
+
+void Renderer::SetTexture(Texture& tex)
+{
+	m_Texture = tex;
+}
+
+void Renderer::SetTransform(Mat4x4& world)
+{
+	m_WorldMat = world;
 }
 
 Vec3 IntersectPlane(const Vec3& planePoint, Vec3& planeNormal, const Vec3& start, const Vec3& end, float& interpolant)
@@ -376,6 +342,11 @@ void Renderer::DrawColor(Color color)
 void Renderer::ClearDepth()
 {
 	std::memset(m_DepthBuffer, 0.0f, (sizeof(float) * GetWindowWidth() * GetWindowHeight()));
+}
+
+void Renderer::DrawTriangle(Triangle& tri, Color color)
+{
+	DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
 }
 
 void Renderer::DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color)
