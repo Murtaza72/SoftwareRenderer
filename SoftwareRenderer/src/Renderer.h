@@ -3,6 +3,7 @@
 #include <SDL.h>
 
 #include <vector>
+#include <list>
 
 #include "Camera.h"
 #include "Color.h"
@@ -29,9 +30,18 @@ struct Light
 class Renderer
 {
 public:
-	Renderer(SDL_Renderer* renderer, SDL_Window* window)
-		: m_Renderer(renderer), m_Window(window)
+	Renderer(int width, int height)
+		: m_Width(width), m_Height(height)
 	{
+		SDL_Init(SDL_INIT_VIDEO);
+
+		m_Window = SDL_CreateWindow(
+			"Software Renderer",
+			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+			m_Width, m_Height, SDL_WINDOW_SHOWN);
+
+		m_Renderer = SDL_CreateRenderer(m_Window, -1, SDL_RENDERER_SOFTWARE);
+
 		m_DepthBuffer = new float[GetWindowWidth() * GetWindowHeight()];
 	}
 
@@ -40,6 +50,7 @@ public:
 	void SetTexture(Texture& tex);
 	void SetTransform(Mat4x4& world);
 	void SetLightSource(Light& light);
+	void SetCamera(Vec3& position, Vec3& target, Vec3& up);
 
 	void Render(Mesh& mesh, Camera& camera, int flags = RENDER_FLAT | RENDER_WIRE);
 
@@ -57,8 +68,11 @@ public:
 	void DrawLine(float x1, float y1, float x2, float y2, Color color);
 
 	int ClipAgainstPlane(Vec3 point, Vec3 plane, Triangle& in, Triangle& outTri1, Triangle& outTri2);
+	void ClipAgainstScreen(std::list<Triangle>& queue, Triangle& tri);
 
 	void Present();
+
+	SDL_Window* GetWindow() { return m_Window; }
 
 private:
 	void DrawPixel(float x, float y, Color c);
@@ -76,10 +90,12 @@ private:
 	SDL_Renderer* m_Renderer;
 	SDL_Window* m_Window;
 
+	int m_Width, m_Height;
+
 	Texture m_Texture;
 	float* m_DepthBuffer = nullptr;
 
-	Mat4x4 m_ProjectionMat, m_WorldMat;
+	Mat4x4 m_WorldMat, m_ProjectionMat, m_ViewMat;
 	float m_NearPlane = 0.1f;
 
 	Light m_Light;

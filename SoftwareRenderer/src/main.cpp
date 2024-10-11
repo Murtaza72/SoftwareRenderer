@@ -14,16 +14,10 @@ int HandleInput(SDL_Event event, float elapsedTime, Camera& cam);
 int main()
 {
 	SDL_Event event = SDL_Event();
-	SDL_Renderer* SDLRenderer;
-	SDL_Window* window;
 
-	SDL_Init(SDL_INIT_VIDEO);
-	SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, 0, &window, &SDLRenderer);
-	SDL_SetWindowTitle(window, "Software Renderer");
+	Renderer renderer(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-	Texture t(SDL_GetWindowSurface(window), "./assets/me.jpg");
-
-	Renderer renderer(SDLRenderer, window);
+	Texture t(SDL_GetWindowSurface(renderer.GetWindow()), "./assets/me.jpg");
 	renderer.SetTexture(t);
 
 	Light light;
@@ -37,7 +31,7 @@ int main()
 	float aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
 	renderer.SetProjection(fov, aspectRatio, nearPlane, farPlane);
 
-	int flags = RENDER_FLAT | RENDER_WIRE;
+	int flags = RENDER_TEXTURED;
 
 	Mesh cubeMesh;
 	if (flags & RENDER_TEXTURED)
@@ -76,7 +70,7 @@ int main()
 			break;
 
 		{
-			#define ROTATE
+			//#define ROTATE
 
 			float theta = 0;
 			#ifdef ROTATE
@@ -96,6 +90,20 @@ int main()
 		}
 
 		{
+			Vec3 up(0.0f, 1.0f, 0.0f);
+			Vec3 target(0.0f, 0.0f, 1.0f);
+
+			Mat4x4 camRotation = Mat4x4::Identity();
+			camRotation = camRotation * Mat4x4::RotationY(cam.yaw);
+			//camRotation = camRotation * Mat4x4::RotationX(cam.roll);
+			//camRotation = camRotation * Mat4x4::RotationZ(cam.pitch);
+			cam.lookDir = MultiplyMatrixVector(target, camRotation);
+			target = cam.position + cam.lookDir;
+
+			renderer.SetCamera(cam.position, target, up);
+		}
+
+		{
 			renderer.ClearColor(Colors::Black);
 			renderer.ClearDepth();
 			renderer.Render(cubeMesh, cam, flags);
@@ -105,7 +113,7 @@ int main()
 		float frameTime = SDL_GetTicks() - startTimer;
 		float fps = (frameTime > 0) ? 1000.0f / frameTime : 0.0f;
 		std::string title = "Software Renderer FPS: " + std::to_string(fps);
-		SDL_SetWindowTitle(window, title.c_str());
+		SDL_SetWindowTitle(renderer.GetWindow(), title.c_str());
 	}
 
 	return 0;
@@ -147,16 +155,16 @@ int HandleInput(SDL_Event event, float elapsedTime, Camera& cam)
 			cam.yaw -= mult;
 			break;
 		case SDLK_q:
-			cam.roll -= mult;
-			break;
-		case SDLK_e:
 			cam.roll += mult;
 			break;
+		case SDLK_e:
+			cam.roll -= mult;
+			break;
 		case SDLK_z:
-			cam.pitch -= mult;
+			cam.pitch += mult;
 			break;
 		case SDLK_c:
-			cam.pitch += mult;
+			cam.pitch -= mult;
 			break;
 
 		case SDLK_r:

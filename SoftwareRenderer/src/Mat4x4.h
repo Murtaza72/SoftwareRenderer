@@ -6,7 +6,7 @@
 class Mat4x4
 {
 public:
-	float elements[4][4];
+	float elements[4][4] = { 0 };
 
 public:
 	Mat4x4 operator*(const Mat4x4& rhs) const

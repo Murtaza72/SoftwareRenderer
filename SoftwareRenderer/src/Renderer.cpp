@@ -2,7 +2,8 @@
 
 #include <iostream>
 #include <algorithm>
-#include <list>
+
+#define TEST 0
 
 Renderer::~Renderer()
 {
@@ -13,46 +14,30 @@ Renderer::~Renderer()
 
 void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
 {
-	Vec3 up(0.0f, 1.0f, 0.0f);
-	Vec3 target(0.0f, 0.0f, 1.0f);
-
-	Mat4x4 camRotation = Mat4x4::Identity();
-	//camRotation = camRotation * Mat4x4::RotationX(cam.roll);
-	camRotation = camRotation * Mat4x4::RotationY(cam.yaw);
-	//camRotation = camRotation * Mat4x4::RotationZ(cam.pitch);
-	cam.lookDir = MultiplyMatrixVector(target, camRotation);
-	target = cam.position + cam.lookDir;
-
-	cam.mat = Mat4x4::LookAt(cam.position, target, up);
-	cam.mat = Mat4x4::QuickInverse(cam.mat);
-
-	std::vector<Triangle> trisToRaster;
+	Mat4x4 worldViewMat = m_WorldMat * m_ViewMat;
 
 	for (Triangle& tri : mesh.GetTriangles())
 	{
-		tri = TransformTriangle(tri, cam.mat);
+		tri = TransformTriangle(tri, worldViewMat);
 
-		tri = TransformTriangle(tri, m_WorldMat);
-
-		// calculate two vectors on triangles
-		// and their cross product
-		Vec3 line01 = tri.p[1] - tri.p[0];
-		Vec3 line02 = tri.p[2] - tri.p[0];
-		Vec3 normal = Cross(line01, line02);
+		// Calculate two vectors on triangles and their cross product
+		Vec3 line1 = tri.p[1] - tri.p[0];
+		Vec3 line2 = tri.p[2] - tri.p[0];
+		Vec3 normal = Cross(line1, line2);
 		normal = normal.GetNormalized();
 
-		// cull tri if its a back face
+		// Cull triangle if its a back face
 		if (Dot(normal, { tri.p[0] - cam.position }) > 0.0f) continue;
 
-		// check how much the triangle normal is facing the light dir 
+		// Check how much the triangle normal is facing the light dir 
 		// and shade it appropriately
 		m_Light.dir = m_Light.dir.GetNormalized();
 		float dp = Dot(normal, m_Light.dir);
-		dp = std::max(0.2f, dp);
+		dp = std::max(0.1f, dp);
 		Color color = m_Light.color * dp;
 		tri.color = color;
 
-		// clipping
+		// Clipping
 		int clippedCount = 0;
 		Triangle clippedTri[2];
 		clippedCount = ClipAgainstPlane({ 0.0f, 0.0f, m_NearPlane }, { 0.0f, 0.0f, 1.0f }, tri, clippedTri[0], clippedTri[1]);
@@ -75,61 +60,15 @@ void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
 			tri.p[1] += Vec3(1.0f, 1.0f, 0.0f);
 			tri.p[2] += Vec3(1.0f, 1.0f, 0.0f);
 
-			tri.p[0].x *= 0.5f * (float)GetWindowWidth();
-			tri.p[0].y *= 0.5f * (float)GetWindowHeight();
-			tri.p[1].x *= 0.5f * (float)GetWindowWidth();
-			tri.p[1].y *= 0.5f * (float)GetWindowHeight();
-			tri.p[2].x *= 0.5f * (float)GetWindowWidth();
-			tri.p[2].y *= 0.5f * (float)GetWindowHeight();
+			tri.p[0] *= Vec3(0.5f * m_Width, 0.5f * m_Height, 1.0f);
+			tri.p[1] *= Vec3(0.5f * m_Width, 0.5f * m_Height, 1.0f);
+			tri.p[2] *= Vec3(0.5f * m_Width, 0.5f * m_Height, 1.0f);
 
-			// Clip triangles against all four screen edges, this could yield
-			// a bunch of triangles, so create a queue that we traverse to 
-			// ensure we only test new triangles generated
-			Triangle clipped[2];
-			std::list<Triangle> queue;
-
-			queue.push_back(tri);
-			int nNewTriangles = 1;
-
-			for (int p = 0; p < 4; p++)
-			{
-				int nTrisToAdd = 0;
-				while (nNewTriangles > 0)
-				{
-					Triangle test = queue.front();
-					queue.pop_front();
-					nNewTriangles--;
-
-					// Clip it against a plane. We only need to test each 
-					// subsequent plane, against subsequent new triangles
-					// as all triangles after a plane clip are guaranteed
-					// to lie on the inside of the plane.
-					switch (p)
-					{
-					case 0:
-						nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, test, clipped[0], clipped[1]);
-						break;
-					case 1:
-						nTrisToAdd = ClipAgainstPlane({ 0.0f, (float)GetWindowHeight() - 1, 0.0f }, { 0.0f, -1.0f, 0.0f }, test, clipped[0], clipped[1]);
-						break;
-					case 2:
-						nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
-						break;
-					case 3:
-						nTrisToAdd = ClipAgainstPlane({ (float)GetWindowWidth() - 1, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
-						break;
-					}
-
-					// add any newly generated tris to the end of queue
-					for (int w = 0; w < nTrisToAdd; w++)
-						queue.push_back(clipped[w]);
-				}
-
-				nNewTriangles = queue.size();
-			}
+			std::list<Triangle> triList;
+			ClipAgainstScreen(triList, tri);
 
 			// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
-			for (auto& tri : queue)
+			for (auto& tri : triList)
 			{
 				if (flags & RENDER_WIRE)
 				{
@@ -154,6 +93,11 @@ void Renderer::SetProjection(float fov, float aspectRatio, float nearPlane, floa
 {
 	m_ProjectionMat = Mat4x4::Projection(fov, aspectRatio, nearPlane, farPlane);
 	m_NearPlane = nearPlane;
+}
+void Renderer::SetCamera(Vec3& position, Vec3& target, Vec3& up)
+{
+	m_ViewMat = Mat4x4::LookAt(position, target, up);
+	m_ViewMat = Mat4x4::QuickInverse(m_ViewMat);
 }
 
 void Renderer::SetTexture(Texture& tex)
@@ -323,6 +267,55 @@ int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, 
 	return -1;	// debug only
 }
 
+void Renderer::ClipAgainstScreen(std::list<Triangle>& queue, Triangle& tri)
+{
+	// Clip triangles against all four screen edges, this could yield
+	// a bunch of triangles, so create a queue that we traverse to 
+	// ensure we only test new triangles generated
+
+	Triangle clipped[2];
+
+	queue.push_back(tri);
+	int nNewTriangles = 1;
+
+	for (int p = 0; p < 4; p++)
+	{
+		int nTrisToAdd = 0;
+		while (nNewTriangles > 0)
+		{
+			Triangle test = queue.front();
+			queue.pop_front();
+			nNewTriangles--;
+
+			// Clip it against a plane. We only need to test each 
+			// subsequent plane, against subsequent new triangles
+			// as all triangles after a plane clip are guaranteed
+			// to lie on the inside of the plane.
+			switch (p)
+			{
+			case 0:
+				nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, test, clipped[0], clipped[1]);
+				break;
+			case 1:
+				nTrisToAdd = ClipAgainstPlane({ 0.0f, (float)m_Height - 1, 0.0f }, { 0.0f, -1.0f, 0.0f }, test, clipped[0], clipped[1]);
+				break;
+			case 2:
+				nTrisToAdd = ClipAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
+				break;
+			case 3:
+				nTrisToAdd = ClipAgainstPlane({ (float)m_Width , 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]);
+				break;
+			}
+
+			// add any newly generated tris to the end of queue
+			for (int w = 0; w < nTrisToAdd; w++)
+				queue.push_back(clipped[w]);
+		}
+
+		nNewTriangles = queue.size();
+	}
+}
+
 void Renderer::DrawPixel(float x, float y, Color color)
 {
 	SDL_SetRenderDrawColor(m_Renderer, color.r, color.g, color.b, 255);
@@ -348,7 +341,7 @@ void Renderer::DrawColor(Color color)
 
 void Renderer::ClearDepth()
 {
-	std::memset(m_DepthBuffer, 0.0f, (sizeof(float) * GetWindowWidth() * GetWindowHeight()));
+	std::memset(m_DepthBuffer, 0.0f, (sizeof(float) * m_Width * m_Height));
 }
 
 void Renderer::DrawTriangle(Triangle& tri, Color color)
@@ -481,10 +474,10 @@ void Renderer::FillTriangleOptimized(Vec3 p1, Vec3 p2, Vec3 p3, Color color)
 			{
 				float z = 1.0f / (((w1 * invArea) * p1.z) + ((w2 * invArea) * p2.z) + ((w3 * invArea) * p3.z));
 
-				float d = m_DepthBuffer[y * GetWindowWidth() + x];
+				float d = m_DepthBuffer[y * m_Width + x];
 				if (z > d)
 				{
-					m_DepthBuffer[y * GetWindowWidth() + x] = z;
+					m_DepthBuffer[y * m_Width + x] = z;
 					DrawPixel(x, y, color);
 				}
 			}
@@ -554,10 +547,14 @@ void Renderer::FillTriangleTextured(Vec3 p1, Vec3 p2, Vec3 p3, TexCoord t1, TexC
 
 				float z = 1.0f / ((L1 * p1.z) + (L2 * p2.z) + (L3 * p3.z));
 
-				if (z > m_DepthBuffer[y * GetWindowWidth() + x])
+				if (z > m_DepthBuffer[y * m_Width + x])
 				{
-					m_DepthBuffer[y * GetWindowWidth() + x] = z;
+					m_DepthBuffer[y * m_Width + x] = z;
+
+					u = std::clamp(u, 0.0f, 1.0f);
+					v = std::clamp(v, 0.0f, 1.0f);
 					Color color = tex.GetRGB(u, v);
+
 					DrawPixel(x, y, color);
 				}
 			}
@@ -578,8 +575,8 @@ void Renderer::BresenhamNaive(int x1, int y1, int x2, int y2)
 	// Works for slope < 1 only
 
 	// invert y-axis
-	y1 = GetWindowHeight() - y1;
-	y2 = GetWindowHeight() - y2;
+	y1 = m_Height - y1;
+	y2 = m_Height - y2;
 
 	int x = x1;
 	int y = y1;
@@ -692,16 +689,12 @@ void Renderer::BresenhamVertical(float x1, float y1, float x2, float y2, Color c
 
 int Renderer::GetWindowWidth()
 {
-	int width;
-	SDL_GetWindowSize(m_Window, &width, nullptr);
-	return width;
+	return m_Width;
 }
 
 int Renderer::GetWindowHeight()
 {
-	int height;
-	SDL_GetWindowSize(m_Window, nullptr, &height);
-	return height;
+	return m_Height;
 }
 
 void Renderer::Present()
