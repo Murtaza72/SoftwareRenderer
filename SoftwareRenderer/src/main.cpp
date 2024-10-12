@@ -6,8 +6,8 @@
 #include "Renderer.h"
 #include "Texture.h"
 
-const int SCREEN_WIDTH = 700;
-const int SCREEN_HEIGHT = 700;
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 800;
 
 int HandleInput(SDL_Event event, float elapsedTime, Camera& cam);
 
@@ -22,7 +22,7 @@ int main()
 
 	Light light;
 	light.dir = { 1.0f,1.0f,-1.0f };
-	light.color = Colors::White;
+	light.color = Colors::Magenta;
 	renderer.SetLightSource(light);
 
 	float nearPlane = 0.1f;
@@ -31,7 +31,7 @@ int main()
 	float aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
 	renderer.SetProjection(fov, aspectRatio, nearPlane, farPlane);
 
-	int flags = RENDER_TEXTURED;
+	int flags = RENDER_FLAT;
 
 	Mesh cubeMesh;
 	if (flags & RENDER_TEXTURED)
@@ -39,9 +39,9 @@ int main()
 		cubeMesh.LoadCube();
 	}
 
-	if (flags & RENDER_FLAT)
+	if (flags & RENDER_FLAT | RENDER_WIRE)
 	{
-		if (!cubeMesh.LoadObject("./assets/ship.obj"), false)
+		if (!cubeMesh.LoadObject("./assets/teapot.obj"), false)
 			std::cout << "Could not load the obj file!!!" << std::endl;
 	}
 
@@ -70,7 +70,7 @@ int main()
 			break;
 
 		{
-			//#define ROTATE
+			#define ROTATE
 
 			float theta = 0;
 			#ifdef ROTATE
@@ -104,7 +104,7 @@ int main()
 		}
 
 		{
-			renderer.ClearColor(Colors::Black);
+			renderer.ClearColor(Colors::Cyan);
 			renderer.ClearDepth();
 			renderer.Render(cubeMesh, cam, flags);
 			renderer.Present();
@@ -112,7 +112,7 @@ int main()
 
 		float frameTime = SDL_GetTicks() - startTimer;
 		float fps = (frameTime > 0) ? 1000.0f / frameTime : 0.0f;
-		std::string title = "Software Renderer FPS: " + std::to_string(fps);
+		std::string title = "Software Renderer FPS: " + std::to_string((int)fps) + " Frame Time: " + std::to_string(frameTime) + " ms";
 		SDL_SetWindowTitle(renderer.GetWindow(), title.c_str());
 	}
 

@@ -17,6 +17,15 @@ public:
 		: Color((unsigned char)color.x, (unsigned char)color.y, (unsigned char)color.z)
 	{
 	}
+
+	uint32_t GetPackedColor()
+	{
+		return
+			(static_cast<uint32_t>(255) << 24)		// highest byte is unused for now
+			| (static_cast<uint32_t>(r) << 16)
+			| (static_cast<uint32_t>(g) << 8)
+			| (static_cast<uint32_t>(b));
+	}
 };
 
 inline Color operator* (Color color, float m)

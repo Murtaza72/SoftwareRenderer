@@ -30,29 +30,18 @@ struct Light
 class Renderer
 {
 public:
-	Renderer(int width, int height)
-		: m_Width(width), m_Height(height)
-	{
-		SDL_Init(SDL_INIT_VIDEO);
-
-		m_Window = SDL_CreateWindow(
-			"Software Renderer",
-			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-			m_Width, m_Height, SDL_WINDOW_SHOWN);
-
-		m_Renderer = SDL_CreateRenderer(m_Window, -1, SDL_RENDERER_SOFTWARE);
-
-		m_DepthBuffer = new float[GetWindowWidth() * GetWindowHeight()];
-	}
-
+	Renderer(int width, int height);
 	~Renderer();
+
 	void SetProjection(float fov, float aspectRatio, float nearPlane, float farPlane);
 	void SetTexture(Texture& tex);
 	void SetTransform(Mat4x4& world);
-	void SetLightSource(Light& light);
+	void SetLightSource(const Light& light);
 	void SetCamera(Vec3& position, Vec3& target, Vec3& up);
 
 	void Render(Mesh& mesh, Camera& camera, int flags = RENDER_FLAT | RENDER_WIRE);
+
+	int BackfaceCulling(Triangle& tri, Camera& cam, Vec3& normal);
 
 	void ClearColor(Color color);
 	void DrawColor(Color color);
@@ -62,8 +51,8 @@ public:
 	void DrawTriangle(Triangle& tri, Color color);
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color);
 	void FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
-	void FillTriangleOptimized(Vec3 p1, Vec3 p2, Vec3 p3, Color color);
-	void FillTriangleTextured(Vec3 p1, Vec3 p2, Vec3 p3, TexCoord t1, TexCoord t2, TexCoord t3, Texture tex);
+	void FillTriangleOptimized(Triangle& tri, Color color);
+	void FillTriangleTextured(Triangle& tri, Texture tex);
 
 	void DrawLine(float x1, float y1, float x2, float y2, Color color);
 
@@ -91,12 +80,15 @@ private:
 	SDL_Window* m_Window;
 
 	int m_Width, m_Height;
+	SDL_Rect m_ScreenRect;
+
+	SDL_Texture* m_ColorTex;
+	uint32_t* m_ColorBuffer = nullptr;
+	float* m_DepthBuffer = nullptr;
 
 	Texture m_Texture;
-	float* m_DepthBuffer = nullptr;
 
 	Mat4x4 m_WorldMat, m_ProjectionMat, m_ViewMat;
 	float m_NearPlane = 0.1f;
-
 	Light m_Light;
 };

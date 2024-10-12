@@ -3,7 +3,29 @@
 #include <iostream>
 #include <algorithm>
 
-#define TEST 0
+#include <omp.h>
+
+Renderer::Renderer(int width, int height)
+	: m_Width(width), m_Height(height)
+{
+	SDL_Init(SDL_INIT_VIDEO);
+
+	m_Window = SDL_CreateWindow(
+		"Software Renderer",
+		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+		m_Width, m_Height, SDL_WINDOW_SHOWN);
+
+	m_Renderer = SDL_CreateRenderer(m_Window, -1, SDL_RENDERER_SOFTWARE);
+
+	m_ScreenRect = { 0,0,m_Width,m_Height };
+
+	// s->format->format = SDL_PIXELFORMAT_XRGB8888
+	m_ColorTex = SDL_CreateTexture(m_Renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, m_ScreenRect.w, m_ScreenRect.h);
+
+	m_ColorBuffer = new uint32_t[m_Width * m_Height];
+
+	m_DepthBuffer = new float[m_Width * m_Height];
+}
 
 Renderer::~Renderer()
 {
@@ -16,18 +38,17 @@ void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
 {
 	Mat4x4 worldViewMat = m_WorldMat * m_ViewMat;
 
-	for (Triangle& tri : mesh.GetTriangles())
+	std::vector<Triangle> triangles = mesh.GetTriangles();
+	int meshCount = triangles.size();
+
+	#pragma omp parallel for 
+	for (int i = 0; i < meshCount; i++)
 	{
+		Triangle tri = triangles[i];
 		tri = TransformTriangle(tri, worldViewMat);
 
-		// Calculate two vectors on triangles and their cross product
-		Vec3 line1 = tri.p[1] - tri.p[0];
-		Vec3 line2 = tri.p[2] - tri.p[0];
-		Vec3 normal = Cross(line1, line2);
-		normal = normal.GetNormalized();
-
-		// Cull triangle if its a back face
-		if (Dot(normal, { tri.p[0] - cam.position }) > 0.0f) continue;
+		Vec3 normal;
+		if (BackfaceCulling(tri, cam, normal)) continue;
 
 		// Check how much the triangle normal is facing the light dir 
 		// and shade it appropriately
@@ -77,12 +98,12 @@ void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
 
 				if (flags & RENDER_FLAT)
 				{
-					FillTriangleOptimized(tri.p[0], tri.p[1], tri.p[2], tri.color);
+					FillTriangleOptimized(tri, tri.color);
 				}
 
 				if (flags & RENDER_TEXTURED)
 				{
-					FillTriangleTextured(tri.p[0], tri.p[1], tri.p[2], tri.tc[0], tri.tc[1], tri.tc[2], m_Texture);
+					FillTriangleTextured(tri, m_Texture);
 				}
 			}
 		}
@@ -110,10 +131,25 @@ void Renderer::SetTransform(Mat4x4& world)
 	m_WorldMat = world;
 }
 
-void Renderer::SetLightSource(Light& light)
+void Renderer::SetLightSource(const Light& light)
 {
 	m_Light.dir = light.dir;
 	m_Light.color = light.color;
+}
+
+int Renderer::BackfaceCulling(Triangle& tri, Camera& cam, Vec3& normal)
+{
+	// Calculate two vectors on triangles and their cross product
+	Vec3 line1 = tri.p[1] - tri.p[0];
+	Vec3 line2 = tri.p[2] - tri.p[0];
+	normal = Cross(line1, line2);
+	normal = normal.GetNormalized();
+
+	// Cull triangle if its a back face
+	if (Dot(normal, { tri.p[0] - cam.position }) > 0.0f)
+		return 1;
+
+	return 0;
 }
 
 Vec3 IntersectPlane(const Vec3& planePoint, Vec3& planeNormal, const Vec3& start, const Vec3& end, float& interpolant)
@@ -318,8 +354,13 @@ void Renderer::ClipAgainstScreen(std::list<Triangle>& queue, Triangle& tri)
 
 void Renderer::DrawPixel(float x, float y, Color color)
 {
-	SDL_SetRenderDrawColor(m_Renderer, color.r, color.g, color.b, 255);
-	SDL_RenderDrawPointF(m_Renderer, x, y);
+	int dummy;
+	SDL_LockTexture(m_ColorTex, &m_ScreenRect, (void**)&m_ColorBuffer, &dummy);
+
+	uint32_t c = color.GetPackedColor();
+	m_ColorBuffer[(int)y * m_ScreenRect.w + (int)x] = c;
+
+	SDL_UnlockTexture(m_ColorTex);
 }
 
 void Renderer::DrawPixel(float x, float y)
@@ -329,8 +370,16 @@ void Renderer::DrawPixel(float x, float y)
 
 void Renderer::ClearColor(Color color)
 {
-	SDL_SetRenderDrawColor(m_Renderer, color.r, color.g, color.b, 0);
-	SDL_RenderClear(m_Renderer);
+	int dummy;
+	SDL_LockTexture(m_ColorTex, &m_ScreenRect, (void**)&m_ColorBuffer, &dummy);
+
+	int totalPixels = m_ScreenRect.w * m_ScreenRect.h;
+	for (int i = 0; i < totalPixels; ++i)
+	{
+		m_ColorBuffer[i] = color.GetPackedColor();
+	}
+
+	SDL_UnlockTexture(m_ColorTex);
 }
 
 void Renderer::DrawColor(Color color)
@@ -422,12 +471,16 @@ void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 	}
 }
 
-void Renderer::FillTriangleOptimized(Vec3 p1, Vec3 p2, Vec3 p3, Color color)
+void Renderer::FillTriangleOptimized(Triangle& tri, Color color)
 {
 	// crude observation suggests 2x speedup 
 	// proper profiling required from original
 
 	// Todo: tile-based rendering using 4x4 and 8x8 pixels together for parallelization
+
+	Vec3 p1 = tri.p[0];
+	Vec3 p2 = tri.p[1];
+	Vec3 p3 = tri.p[2];
 
 	float area = EdgeCross(p1, p2, p3);
 	// If the triangle is clockwise, swap two vertices to make it counterclockwise
@@ -440,10 +493,8 @@ void Renderer::FillTriangleOptimized(Vec3 p1, Vec3 p2, Vec3 p3, Color color)
 	float invArea = 1.0f / area;
 
 	// Calculate bounding box around the tri
-	int xMin = floor(std::min(std::min(p1.x, p2.x), p3.x));
-	int xMax = ceil(std::max(std::max(p1.x, p2.x), p3.x));
-	int yMin = floor(std::min(std::min(p1.y, p2.y), p3.y));
-	int yMax = ceil(std::max(std::max(p1.y, p2.y), p3.y));
+	int xMin, xMax, yMin, yMax;
+	tri.GetBoundingBox(xMin, xMax, yMin, yMax, m_Width, m_Height);
 
 	// Determine if either top or left edge
 	float bias1 = IsTopLeftEdge(p1, p2) ? 0 : -0.001f;
@@ -493,8 +544,15 @@ void Renderer::FillTriangleOptimized(Vec3 p1, Vec3 p2, Vec3 p3, Color color)
 	}
 }
 
-void Renderer::FillTriangleTextured(Vec3 p1, Vec3 p2, Vec3 p3, TexCoord t1, TexCoord t2, TexCoord t3, Texture tex)
+void Renderer::FillTriangleTextured(Triangle& tri, Texture tex)
 {
+	Vec3 p1 = tri.p[0];
+	Vec3 p2 = tri.p[1];
+	Vec3 p3 = tri.p[2];
+	TexCoord t1 = tri.tc[0];
+	TexCoord t2 = tri.tc[1];
+	TexCoord t3 = tri.tc[2];
+
 	float area = EdgeCross(p1, p2, p3);
 	if (area < 0)
 	{
@@ -506,10 +564,8 @@ void Renderer::FillTriangleTextured(Vec3 p1, Vec3 p2, Vec3 p3, TexCoord t1, TexC
 	float invArea = 1.0f / area;
 
 	// Calculate bounding box around the tri
-	int xMin = floor(std::min(std::min(p1.x, p2.x), p3.x));
-	int xMax = ceil(std::max(std::max(p1.x, p2.x), p3.x));
-	int yMin = floor(std::min(std::min(p1.y, p2.y), p3.y));
-	int yMax = ceil(std::max(std::max(p1.y, p2.y), p3.y));
+	int xMin, xMax, yMin, yMax;
+	tri.GetBoundingBox(xMin, xMax, yMin, yMax, m_Width, m_Height);
 
 	// Determine if either top or left edge
 	float bias1 = IsTopLeftEdge(p1, p2) ? 0 : -0.001f;
@@ -538,14 +594,23 @@ void Renderer::FillTriangleTextured(Vec3 p1, Vec3 p2, Vec3 p3, TexCoord t1, TexC
 
 			if (isInside)
 			{
-				float L1 = w1 * invArea;
-				float L2 = w2 * invArea;
-				float L3 = w3 * invArea;
+				float alpha = w1 * invArea;
+				float beta = w2 * invArea;
+				float gamma = w3 * invArea;
 
-				float u = (L1 * t1.u) + (L2 * t2.u) + (L3 * t3.u);
-				float v = (L1 * t1.v) + (L2 * t2.v) + (L3 * t3.v);
+				#if 1
+				float u = (alpha * t1.u) + (beta * t2.u) + (gamma * t3.u);
+				float v = (alpha * t1.v) + (beta * t2.v) + (gamma * t3.v);
 
-				float z = 1.0f / ((L1 * p1.z) + (L2 * p2.z) + (L3 * p3.z));
+				#else
+				float w = (alpha * (1.0f / p1.w)) + (beta * (1.0f / p2.w)) + (gamma * (1.0f / p3.w));
+				float u = (alpha * (t1.u / t1.w)) + (beta * (t2.u / t2.w)) + (gamma * (t3.u / t3.w));
+				float v = (alpha * (t1.v / t1.w)) + (beta * (t2.v / t2.w)) + (gamma * (t3.v / t3.w));
+				u /= w;
+				v /= w;
+				#endif
+
+				float z = 1.0f / ((alpha * p1.z) + (beta * p2.z) + (gamma * p3.z));
 
 				if (z > m_DepthBuffer[y * m_Width + x])
 				{
@@ -699,5 +764,6 @@ int Renderer::GetWindowHeight()
 
 void Renderer::Present()
 {
+	SDL_RenderCopy(m_Renderer, m_ColorTex, &m_ScreenRect, &m_ScreenRect);
 	SDL_RenderPresent(m_Renderer);
 }
