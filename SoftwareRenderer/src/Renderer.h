@@ -1,10 +1,5 @@
 #pragma once
 
-#include <SDL.h>
-
-#include <vector>
-#include <list>
-
 #include "Camera.h"
 #include "Color.h"
 #include "Mat4x4.h"

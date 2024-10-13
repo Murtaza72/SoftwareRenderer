@@ -1,7 +1,6 @@
 #pragma once
 
-#include <iostream>
-#include <cmath>
+#include "pch.h"
 
 #include "Vec3.h"
 

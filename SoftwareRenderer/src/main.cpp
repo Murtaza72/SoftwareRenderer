@@ -1,10 +1,6 @@
-#define SDL_MAIN_HANDLED
-#include <SDL.h>
-#include <chrono>
-#include <string>
+#include "pch.h"
 
 #include "Renderer.h"
-#include "Texture.h"
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 800;

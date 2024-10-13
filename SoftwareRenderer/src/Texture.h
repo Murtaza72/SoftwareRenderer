@@ -1,10 +1,6 @@
 #pragma once
 
-#include <iostream>
-#include <string>
-
-#include <SDL.h>
-#include <SDL_image.h>
+#include "pch.h"
 
 class Texture
 {

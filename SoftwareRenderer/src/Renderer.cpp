@@ -1,10 +1,8 @@
+#include "pch.h"
+
 #include "Renderer.h"
 
-#include <iostream>
-#include <algorithm>
-#include <omp.h>
-
-#define EPSILON 1e-3
+#define EPSILON 1e-5
 
 Renderer::Renderer(int width, int height)
 	: m_Width(width), m_Height(height)
