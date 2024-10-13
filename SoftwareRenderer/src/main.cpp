@@ -22,16 +22,16 @@ int main()
 
 	Light light;
 	light.dir = { 1.0f,1.0f,-1.0f };
-	light.color = Colors::Magenta;
+	light.color = Colors::White;
 	renderer.SetLightSource(light);
 
-	float nearPlane = 0.1f;
+	float nearPlane = 1.0f;
 	float farPlane = 1000.0f;
 	float fov = 90.0f;
 	float aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
 	renderer.SetProjection(fov, aspectRatio, nearPlane, farPlane);
 
-	int flags = RENDER_FLAT;
+	int flags = RENDER_TEXTURED;
 
 	Mesh cubeMesh;
 	if (flags & RENDER_TEXTURED)
@@ -41,8 +41,8 @@ int main()
 
 	if (flags & RENDER_FLAT | RENDER_WIRE)
 	{
-		if (!cubeMesh.LoadObject("./assets/teapot.obj"), false)
-			std::cout << "Could not load the obj file!!!" << std::endl;
+		//if (!cubeMesh.LoadObject("./assets/bunny.obj"), false)
+		std::cout << "Could not load the obj file!!!" << std::endl;
 	}
 
 	Camera cam;
@@ -83,7 +83,7 @@ int main()
 			Mat4x4 rotationMatY = Mat4x4::RotationY(theta);
 			Mat4x4 rotationMatZ = Mat4x4::RotationZ(theta);
 			Mat4x4 translateMat = Mat4x4::Translation(0.0f, 0.0f, 5.0f);
-			Mat4x4 scaleMat = Mat4x4::Scale();
+			Mat4x4 scaleMat = Mat4x4::Scale(10.0f, 10.0f, 10.0f);
 
 			Mat4x4 worldMat = scaleMat * rotationMatX * rotationMatY * rotationMatZ * translateMat;
 			renderer.SetTransform(worldMat);
@@ -104,7 +104,7 @@ int main()
 		}
 
 		{
-			renderer.ClearColor(Colors::Cyan);
+			renderer.ClearColor(Colors::Black);
 			renderer.ClearDepth();
 			renderer.Render(cubeMesh, cam, flags);
 			renderer.Present();

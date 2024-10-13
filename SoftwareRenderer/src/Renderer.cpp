@@ -2,8 +2,9 @@
 
 #include <iostream>
 #include <algorithm>
-
 #include <omp.h>
+
+#define EPSILON 1e-3
 
 Renderer::Renderer(int width, int height)
 	: m_Width(width), m_Height(height)
@@ -39,10 +40,10 @@ void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
 	Mat4x4 worldViewMat = m_WorldMat * m_ViewMat;
 
 	std::vector<Triangle> triangles = mesh.GetTriangles();
-	int meshCount = triangles.size();
+	int triCount = triangles.size();
 
 	#pragma omp parallel for 
-	for (int i = 0; i < meshCount; i++)
+	for (int i = 0; i < triCount; i++)
 	{
 		Triangle tri = triangles[i];
 		tri = TransformTriangle(tri, worldViewMat);
@@ -89,7 +90,7 @@ void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
 			ClipAgainstScreen(triList, tri);
 
 			// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
-			for (auto& tri : triList)
+			for (Triangle& tri : triList)
 			{
 				if (flags & RENDER_WIRE)
 				{
@@ -413,6 +414,21 @@ void Renderer::DrawLine(float x1, float y1, float x2, float y2, Color color)
 		BresenhamVertical(x1, y1, x2, y2, color);
 }
 
+bool Renderer::DepthTest(Triangle& tri, float alpha, float beta, float gamma, int x, int y)
+{
+	float z = 1.0f / ((alpha * tri.p[0].z) + (beta * tri.p[1].z) + (gamma * tri.p[2].z));
+
+	int index = y * m_Width + x;
+	float d = m_DepthBuffer[index];
+	if (z > d)
+	{
+		m_DepthBuffer[index] = z;
+		return true;
+	}
+
+	return false;
+}
+
 float EdgeCross(Vec2 a, Vec2 b, Vec2 c)
 {
 	Vec2 ab = { b.x - a.x, b.y - a.y };
@@ -497,9 +513,9 @@ void Renderer::FillTriangleOptimized(Triangle& tri, Color color)
 	tri.GetBoundingBox(xMin, xMax, yMin, yMax, m_Width, m_Height);
 
 	// Determine if either top or left edge
-	float bias1 = IsTopLeftEdge(p1, p2) ? 0 : -0.001f;
-	float bias2 = IsTopLeftEdge(p2, p3) ? 0 : -0.001f;
-	float bias3 = IsTopLeftEdge(p3, p1) ? 0 : -0.001f;
+	float bias1 = IsTopLeftEdge(p1, p2) ? 0 : -EPSILON;
+	float bias2 = IsTopLeftEdge(p2, p3) ? 0 : -EPSILON;
+	float bias3 = IsTopLeftEdge(p3, p1) ? 0 : -EPSILON;
 
 	float deltaW1Col = p2.y - p3.y, deltaW1Row = p3.x - p2.x;
 	float deltaW2Col = p3.y - p1.y, deltaW2Row = p1.x - p3.x;
@@ -513,8 +529,8 @@ void Renderer::FillTriangleOptimized(Triangle& tri, Color color)
 
 	for (int y = yMin; y <= yMax; y++)
 	{
-		float w2 = w2Row;
 		float w1 = w1Row;
+		float w2 = w2Row;
 		float w3 = w3Row;
 
 		for (int x = xMin; x <= xMax; x++)
@@ -523,14 +539,12 @@ void Renderer::FillTriangleOptimized(Triangle& tri, Color color)
 
 			if (isInside)
 			{
-				float z = 1.0f / (((w1 * invArea) * p1.z) + ((w2 * invArea) * p2.z) + ((w3 * invArea) * p3.z));
+				float alpha = w1 * invArea;
+				float beta = w2 * invArea;
+				float gamma = w3 * invArea;
 
-				float d = m_DepthBuffer[y * m_Width + x];
-				if (z > d)
-				{
-					m_DepthBuffer[y * m_Width + x] = z;
+				if (DepthTest(tri, alpha, beta, gamma, x, y))
 					DrawPixel(x, y, color);
-				}
 			}
 
 			w1 += deltaW1Col;
@@ -568,9 +582,9 @@ void Renderer::FillTriangleTextured(Triangle& tri, Texture tex)
 	tri.GetBoundingBox(xMin, xMax, yMin, yMax, m_Width, m_Height);
 
 	// Determine if either top or left edge
-	float bias1 = IsTopLeftEdge(p1, p2) ? 0 : -0.001f;
-	float bias2 = IsTopLeftEdge(p2, p3) ? 0 : -0.001f;
-	float bias3 = IsTopLeftEdge(p3, p1) ? 0 : -0.001f;
+	float bias1 = IsTopLeftEdge(p1, p2) ? 0 : -EPSILON;
+	float bias2 = IsTopLeftEdge(p2, p3) ? 0 : -EPSILON;
+	float bias3 = IsTopLeftEdge(p3, p1) ? 0 : -EPSILON;
 
 	float deltaW1Col = p2.y - p3.y, deltaW1Row = p3.x - p2.x;
 	float deltaW2Col = p3.y - p1.y, deltaW2Row = p1.x - p3.x;
@@ -610,12 +624,12 @@ void Renderer::FillTriangleTextured(Triangle& tri, Texture tex)
 				v /= w;
 				#endif
 
-				float z = 1.0f / ((alpha * p1.z) + (beta * p2.z) + (gamma * p3.z));
+				// Due to floating point inaccuracy when calculating z value 
+				// sometimes the back face is visible especially when object
+				// is close to camera
 
-				if (z > m_DepthBuffer[y * m_Width + x])
+				if (DepthTest(tri, alpha, beta, gamma, x, y))
 				{
-					m_DepthBuffer[y * m_Width + x] = z;
-
 					u = std::clamp(u, 0.0f, 1.0f);
 					v = std::clamp(v, 0.0f, 1.0f);
 					Color color = tex.GetRGB(u, v);

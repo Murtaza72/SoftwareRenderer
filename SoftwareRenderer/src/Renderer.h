@@ -47,6 +47,7 @@ public:
 	void DrawColor(Color color);
 
 	void ClearDepth();
+	bool DepthTest(Triangle& tri, float alpha, float beta, float gamma, int x, int y);
 
 	void DrawTriangle(Triangle& tri, Color color);
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color);
