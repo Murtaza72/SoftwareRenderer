@@ -18,19 +18,24 @@ public:
 		}
 	}
 
-	Color GetRGB(float x, float y) const
+	Color RepeatSample(float x, float y)
 	{
-		x *= m_Texture->w;
-		y *= m_Texture->h;
-		Uint32 color = GetPixel(x, y);
+		float u = x - (float)floor(x);
+		float v = y - (float)floor(y);
+		int s = (int)((m_Texture->w - 1) * u);
+		int t = (int)((m_Texture->h - 1) * v);
 
-		SDL_PixelFormat* fmt = m_Texture->format;
+		return GetPixelColor(s, t);
+	}
 
-		uint8_t r = (color & fmt->Rmask) >> fmt->Rshift;
-		uint8_t g = (color & fmt->Gmask) >> fmt->Gshift;
-		uint8_t b = (color & fmt->Bmask) >> fmt->Bshift;
+	Color ClampSample(float x, float y)
+	{
+		x = std::clamp(x, 0.0f, 1.0f);
+		y = std::clamp(y, 0.0f, 1.0f);
+		int s = (int)((m_Texture->w - 1) * x);
+		int t = (int)((m_Texture->h - 1) * y);
 
-		return { r,g,b };
+		return GetPixelColor(s, t);
 	}
 
 private:
@@ -66,11 +71,19 @@ private:
 		}
 	}
 
-	uint32_t GetPixel(float x, float y) const
+	Color GetPixelColor(float x, float y) const
 	{
-		Uint8* p = (Uint8*)m_Texture->pixels + (int)y * m_Texture->pitch + (int)x * 4; // bpp=4
+		uint8_t* p = (uint8_t*)m_Texture->pixels + (int)y * m_Texture->pitch + (int)x * 4; // bpp=4
 
-		return *(Uint32*)p;
+		uint32_t color = *(uint32_t*)p;
+
+		SDL_PixelFormat* fmt = m_Texture->format;
+
+		uint8_t r = (color & fmt->Rmask) >> fmt->Rshift;
+		uint8_t g = (color & fmt->Gmask) >> fmt->Gshift;
+		uint8_t b = (color & fmt->Bmask) >> fmt->Bshift;
+
+		return { r,g,b };
 	}
 private:
 	SDL_Surface* m_Texture;

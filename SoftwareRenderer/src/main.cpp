@@ -37,8 +37,8 @@ int main()
 
 	if (flags & RENDER_FLAT | RENDER_WIRE)
 	{
-		if (!cubeMesh.LoadObject("./assets/bunny.obj"), false)
-			std::cout << "Could not load the obj file!!!" << std::endl;
+		//if (!cubeMesh.LoadObject("./assets/bunny.obj"), false)
+		std::cout << "Could not load the obj file!!!" << std::endl;
 	}
 
 	Camera cam;
@@ -66,7 +66,7 @@ int main()
 			break;
 
 		{
-			#define ROTATE
+			//#define ROTATE
 
 			float theta = 0;
 			#ifdef ROTATE
@@ -75,11 +75,13 @@ int main()
 			theta = 0.0f;
 			#endif
 
+			float scale = 5.0f;
+
 			Mat4x4 rotationMatX = Mat4x4::RotationX(theta);
 			Mat4x4 rotationMatY = Mat4x4::RotationY(theta);
 			Mat4x4 rotationMatZ = Mat4x4::RotationZ(theta);
 			Mat4x4 translateMat = Mat4x4::Translation(0.0f, 0.0f, 5.0f);
-			Mat4x4 scaleMat = Mat4x4::Scale(10.0f, 10.0f, 10.0f);
+			Mat4x4 scaleMat = Mat4x4::Scale(scale, scale, scale);
 
 			Mat4x4 worldMat = scaleMat * rotationMatX * rotationMatY * rotationMatZ * translateMat;
 			renderer.SetTransform(worldMat);

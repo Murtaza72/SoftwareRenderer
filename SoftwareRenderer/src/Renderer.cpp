@@ -630,9 +630,9 @@ void Renderer::FillTriangleTextured(Triangle& tri, Texture tex)
 
 				if (DepthTest(tri, alpha, beta, gamma, x, y))
 				{
-					u = std::clamp(u, 0.0f, 1.0f);
-					v = std::clamp(v, 0.0f, 1.0f);
-					Color color = tex.GetRGB(u, v);
+
+					//Color color = tex.GetRGB(u, v);
+					Color color = tex.ClampSample(u, v);
 
 					DrawPixel(x, y, color);
 				}
