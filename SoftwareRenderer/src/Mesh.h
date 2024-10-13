@@ -93,7 +93,7 @@ public:
 		m_Tris.push_back(tri);
 	}
 
-	std::vector<Triangle> GetTriangles()
+	std::vector<Triangle> GetTriangles() const
 	{
 		return m_Tris;
 	}

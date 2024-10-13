@@ -16,7 +16,9 @@ struct Triangle
 	TexCoord tc[3];
 	Color color = Colors::Magenta;
 
-	void GetBoundingBox(int& xMin, int& xMax, int& yMin, int& yMax, int width, int height)
+	// TODO: create a struct for bounding box to return
+
+	void GetBoundingBox(int& xMin, int& xMax, int& yMin, int& yMax, int width, int height) const
 	{
 		xMin = floor(std::min(std::min(p[0].x, p[1].x), p[2].x));
 		xMax = ceil(std::max(std::max(p[0].x, p[1].x), p[2].x));

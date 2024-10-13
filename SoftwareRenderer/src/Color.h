@@ -18,7 +18,7 @@ public:
 	{
 	}
 
-	uint32_t GetPackedColor()
+	uint32_t GetPackedColor() const
 	{
 		return
 			(static_cast<uint32_t>(255) << 24)		// highest byte is unused for now

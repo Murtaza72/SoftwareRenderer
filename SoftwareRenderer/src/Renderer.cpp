@@ -33,12 +33,15 @@ Renderer::~Renderer()
 	SDL_Quit();
 }
 
-void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
+void Renderer::Render(const Mesh& mesh, const Camera& cam, int flags)
 {
 	Mat4x4 worldViewMat = m_WorldMat * m_ViewMat;
 
 	std::vector<Triangle> triangles = mesh.GetTriangles();
 	int triCount = triangles.size();
+
+	Vec3 nearPlane(0.0f, 0.0f, m_NearPlane);
+	Vec3 normalIntoZ(0.0f, 0.0f, 1.0f);
 
 	#pragma omp parallel for 
 	for (int i = 0; i < triCount; i++)
@@ -60,7 +63,7 @@ void Renderer::Render(Mesh& mesh, Camera& cam, int flags)
 		// Clipping
 		int clippedCount = 0;
 		Triangle clippedTri[2];
-		clippedCount = ClipAgainstPlane({ 0.0f, 0.0f, m_NearPlane }, { 0.0f, 0.0f, 1.0f }, tri, clippedTri[0], clippedTri[1]);
+		clippedCount = ClipAgainstPlane(nearPlane, normalIntoZ, tri, clippedTri[0], clippedTri[1]);
 
 		for (int n = 0; n < clippedCount; n++)
 		{
@@ -114,18 +117,19 @@ void Renderer::SetProjection(float fov, float aspectRatio, float nearPlane, floa
 	m_ProjectionMat = Mat4x4::Projection(fov, aspectRatio, nearPlane, farPlane);
 	m_NearPlane = nearPlane;
 }
-void Renderer::SetCamera(Vec3& position, Vec3& target, Vec3& up)
+
+void Renderer::SetCamera(const Vec3& position, const Vec3& target, const Vec3& up)
 {
 	m_ViewMat = Mat4x4::LookAt(position, target, up);
 	m_ViewMat = Mat4x4::QuickInverse(m_ViewMat);
 }
 
-void Renderer::SetTexture(Texture& tex)
+void Renderer::SetTexture(const Texture& tex)
 {
 	m_Texture = tex;
 }
 
-void Renderer::SetTransform(Mat4x4& world)
+void Renderer::SetTransform(const Mat4x4& world)
 {
 	m_WorldMat = world;
 }
@@ -136,7 +140,7 @@ void Renderer::SetLightSource(const Light& light)
 	m_Light.color = light.color;
 }
 
-int Renderer::BackfaceCulling(Triangle& tri, Camera& cam, Vec3& normal)
+int Renderer::BackfaceCulling(const Triangle& tri, const Camera& cam, Vec3& normal)
 {
 	// Calculate two vectors on triangles and their cross product
 	Vec3 line1 = tri.p[1] - tri.p[0];
@@ -151,12 +155,12 @@ int Renderer::BackfaceCulling(Triangle& tri, Camera& cam, Vec3& normal)
 	return 0;
 }
 
-Vec3 IntersectPlane(const Vec3& planePoint, Vec3& planeNormal, const Vec3& start, const Vec3& end, float& interpolant)
+Vec3 IntersectPlane(const Vec3& planePoint, const Vec3& planeNormal, const Vec3& start, const Vec3& end, float& interpolant)
 {
-	planeNormal = planeNormal.GetNormalized();
-	float planeD = -Dot(planeNormal, planePoint);
-	float ad = Dot(start, planeNormal);
-	float bd = Dot(end, planeNormal);
+	Vec3 pnormal = planeNormal.GetNormalized();
+	float planeD = -Dot(pnormal, planePoint);
+	float ad = Dot(start, pnormal);
+	float bd = Dot(end, pnormal);
 	interpolant = (-planeD - ad) / (bd - ad);
 	Vec3 line = end - start;
 	Vec3 lineIntersect = line * interpolant;
@@ -164,20 +168,18 @@ Vec3 IntersectPlane(const Vec3& planePoint, Vec3& planeNormal, const Vec3& start
 	return start + lineIntersect;
 }
 
-int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, Triangle& outTri1, Triangle& outTri2)
+int Renderer::ClipAgainstPlane(const Vec3& planePoint, const Vec3& planeNormal, const Triangle& in, Triangle& outTri1, Triangle& outTri2)
 {
-	planeNormal.GetNormalized();
-
-	auto dist = [&](Vec3& p)
+	auto dist = [&](const Vec3& p)
 		{
 			return Dot(planeNormal, p) - Dot(planeNormal, planePoint);
 		};
 
 	// positive sign if inside
-	Vec3* insidePoint[3];	int insidePointCount = 0;
-	Vec3* outsidePoint[3];	int outsidePointCount = 0;
-	TexCoord* insideTex[3];	int insideTexCount = 0;
-	TexCoord* outsideTex[3]; int outsideTexCount = 0;
+	Vec3 insidePoint[3];	int insidePointCount = 0;
+	Vec3 outsidePoint[3];	int outsidePointCount = 0;
+	TexCoord insideTex[3];	int insideTexCount = 0;
+	TexCoord outsideTex[3]; int outsideTexCount = 0;
 
 	float d0 = dist(in.p[0]);
 	float d1 = dist(in.p[1]);
@@ -185,35 +187,35 @@ int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, 
 
 	if (d0 >= 0)
 	{
-		insidePoint[insidePointCount++] = &in.p[0];
-		insideTex[insideTexCount++] = &in.tc[0];
+		insidePoint[insidePointCount++] = in.p[0];
+		insideTex[insideTexCount++] = in.tc[0];
 	}
 	else
 	{
-		outsidePoint[outsidePointCount++] = &in.p[0];
-		outsideTex[outsideTexCount++] = &in.tc[0];
+		outsidePoint[outsidePointCount++] = in.p[0];
+		outsideTex[outsideTexCount++] = in.tc[0];
 	}
 
 	if (d1 >= 0)
 	{
-		insidePoint[insidePointCount++] = &in.p[1];
-		insideTex[insideTexCount++] = &in.tc[1];
+		insidePoint[insidePointCount++] = in.p[1];
+		insideTex[insideTexCount++] = in.tc[1];
 	}
 	else
 	{
-		outsidePoint[outsidePointCount++] = &in.p[1];
-		outsideTex[outsideTexCount++] = &in.tc[1];
+		outsidePoint[outsidePointCount++] = in.p[1];
+		outsideTex[outsideTexCount++] = in.tc[1];
 	}
 
 	if (d2 >= 0)
 	{
-		insidePoint[insidePointCount++] = &in.p[2];
-		insideTex[insideTexCount++] = &in.tc[2];
+		insidePoint[insidePointCount++] = in.p[2];
+		insideTex[insideTexCount++] = in.tc[2];
 	}
 	else
 	{
-		outsidePoint[outsidePointCount++] = &in.p[2];
-		outsideTex[outsideTexCount++] = &in.tc[2];
+		outsidePoint[outsidePointCount++] = in.p[2];
+		outsideTex[outsideTexCount++] = in.tc[2];
 	}
 
 	if (insidePointCount == 0)
@@ -243,23 +245,23 @@ int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, 
 		outTri1 = in;
 		outTri1.color = in.color;
 
-		outTri1.p[0] = *insidePoint[0];
-		outTri1.tc[0] = *insideTex[0];
+		outTri1.p[0] = insidePoint[0];
+		outTri1.tc[0] = insideTex[0];
 
 		// but the two new points are at the locations where the
 		// original sides of the triangle intersect with the plane
 		float interpolant;
 
 		// calculate intersection points
-		outTri1.p[1] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[0], interpolant);
-		outTri1.tc[1].u = interpolant * (outsideTex[0]->u - insideTex[0]->u) + insideTex[0]->u;
-		outTri1.tc[1].v = interpolant * (outsideTex[0]->v - insideTex[0]->v) + insideTex[0]->v;
-		outTri1.tc[1].w = interpolant * (outsideTex[0]->w - insideTex[0]->w) + insideTex[0]->w;
+		outTri1.p[1] = IntersectPlane(planePoint, planeNormal, insidePoint[0], outsidePoint[0], interpolant);
+		outTri1.tc[1].u = interpolant * (outsideTex[0].u - insideTex[0].u) + insideTex[0].u;
+		outTri1.tc[1].v = interpolant * (outsideTex[0].v - insideTex[0].v) + insideTex[0].v;
+		outTri1.tc[1].w = interpolant * (outsideTex[0].w - insideTex[0].w) + insideTex[0].w;
 
-		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[1], interpolant);
-		outTri1.tc[2].u = interpolant * (outsideTex[1]->u - insideTex[0]->u) + insideTex[0]->u;
-		outTri1.tc[2].v = interpolant * (outsideTex[1]->v - insideTex[0]->v) + insideTex[0]->v;
-		outTri1.tc[2].w = interpolant * (outsideTex[1]->w - insideTex[0]->w) + insideTex[0]->w;
+		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, insidePoint[0], outsidePoint[1], interpolant);
+		outTri1.tc[2].u = interpolant * (outsideTex[1].u - insideTex[0].u) + insideTex[0].u;
+		outTri1.tc[2].v = interpolant * (outsideTex[1].v - insideTex[0].v) + insideTex[0].v;
+		outTri1.tc[2].w = interpolant * (outsideTex[1].w - insideTex[0].w) + insideTex[0].w;
 
 		return 1;
 	}
@@ -275,26 +277,26 @@ int Renderer::ClipAgainstPlane(Vec3 planePoint, Vec3 planeNormal, Triangle& in, 
 		float interpolant;
 
 		// first tri is made of two inside points and one intersection point
-		outTri1.p[0] = *insidePoint[0];
-		outTri1.p[1] = *insidePoint[1];
-		outTri1.tc[0] = *insideTex[0];
-		outTri1.tc[1] = *insideTex[1];
+		outTri1.p[0] = insidePoint[0];
+		outTri1.p[1] = insidePoint[1];
+		outTri1.tc[0] = insideTex[0];
+		outTri1.tc[1] = insideTex[1];
 
-		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[0], *outsidePoint[0], interpolant);
-		outTri1.tc[2].u = interpolant * (outsideTex[0]->u - insideTex[0]->u) + insideTex[0]->u;
-		outTri1.tc[2].v = interpolant * (outsideTex[0]->v - insideTex[0]->v) + insideTex[0]->v;
-		outTri1.tc[2].w = interpolant * (outsideTex[0]->w - insideTex[0]->w) + insideTex[0]->w;
+		outTri1.p[2] = IntersectPlane(planePoint, planeNormal, insidePoint[0], outsidePoint[0], interpolant);
+		outTri1.tc[2].u = interpolant * (outsideTex[0].u - insideTex[0].u) + insideTex[0].u;
+		outTri1.tc[2].v = interpolant * (outsideTex[0].v - insideTex[0].v) + insideTex[0].v;
+		outTri1.tc[2].w = interpolant * (outsideTex[0].w - insideTex[0].w) + insideTex[0].w;
 
 		// second tri is made of two intersection points and one inside point
-		outTri2.p[0] = *insidePoint[1];
+		outTri2.p[0] = insidePoint[1];
 		outTri2.p[1] = outTri1.p[2];
-		outTri2.tc[0] = *insideTex[1];
+		outTri2.tc[0] = insideTex[1];
 		outTri2.tc[1] = outTri1.tc[2];
 
-		outTri2.p[2] = IntersectPlane(planePoint, planeNormal, *insidePoint[1], *outsidePoint[0], interpolant);
-		outTri2.tc[2].u = interpolant * (outsideTex[0]->u - insideTex[1]->u) + insideTex[1]->u;
-		outTri2.tc[2].v = interpolant * (outsideTex[0]->v - insideTex[1]->v) + insideTex[1]->v;
-		outTri2.tc[2].w = interpolant * (outsideTex[0]->w - insideTex[1]->w) + insideTex[1]->w;
+		outTri2.p[2] = IntersectPlane(planePoint, planeNormal, insidePoint[1], outsidePoint[0], interpolant);
+		outTri2.tc[2].u = interpolant * (outsideTex[0].u - insideTex[1].u) + insideTex[1].u;
+		outTri2.tc[2].v = interpolant * (outsideTex[0].v - insideTex[1].v) + insideTex[1].v;
+		outTri2.tc[2].w = interpolant * (outsideTex[0].w - insideTex[1].w) + insideTex[1].w;
 
 		return 2;
 	}
@@ -412,7 +414,7 @@ void Renderer::DrawLine(float x1, float y1, float x2, float y2, Color color)
 		BresenhamVertical(x1, y1, x2, y2, color);
 }
 
-bool Renderer::DepthTest(Triangle& tri, float alpha, float beta, float gamma, int x, int y)
+bool Renderer::DepthTest(const Triangle& tri, float alpha, float beta, float gamma, int x, int y)
 {
 	float z = 1.0f / ((alpha * tri.p[0].z) + (beta * tri.p[1].z) + (gamma * tri.p[2].z));
 

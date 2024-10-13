@@ -18,7 +18,7 @@ public:
 		}
 	}
 
-	Color GetRGB(float x, float y)
+	Color GetRGB(float x, float y) const
 	{
 		x *= m_Texture->w;
 		y *= m_Texture->h;
@@ -66,7 +66,7 @@ private:
 		}
 	}
 
-	uint32_t GetPixel(float x, float y)
+	uint32_t GetPixel(float x, float y) const
 	{
 		Uint8* p = (Uint8*)m_Texture->pixels + (int)y * m_Texture->pitch + (int)x * 4; // bpp=4
 

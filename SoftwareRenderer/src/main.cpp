@@ -37,8 +37,8 @@ int main()
 
 	if (flags & RENDER_FLAT | RENDER_WIRE)
 	{
-		//if (!cubeMesh.LoadObject("./assets/bunny.obj"), false)
-		std::cout << "Could not load the obj file!!!" << std::endl;
+		if (!cubeMesh.LoadObject("./assets/bunny.obj"), false)
+			std::cout << "Could not load the obj file!!!" << std::endl;
 	}
 
 	Camera cam;

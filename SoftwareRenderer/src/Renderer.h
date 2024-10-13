@@ -29,20 +29,20 @@ public:
 	~Renderer();
 
 	void SetProjection(float fov, float aspectRatio, float nearPlane, float farPlane);
-	void SetTexture(Texture& tex);
-	void SetTransform(Mat4x4& world);
+	void SetTexture(const Texture& tex);
+	void SetTransform(const Mat4x4& world);
 	void SetLightSource(const Light& light);
-	void SetCamera(Vec3& position, Vec3& target, Vec3& up);
+	void SetCamera(const Vec3& position, const Vec3& target, const Vec3& up);
 
-	void Render(Mesh& mesh, Camera& camera, int flags = RENDER_FLAT | RENDER_WIRE);
+	void Render(const Mesh& mesh, const Camera& cam, int flags = RENDER_FLAT | RENDER_WIRE);
 
-	int BackfaceCulling(Triangle& tri, Camera& cam, Vec3& normal);
+	int BackfaceCulling(const Triangle& tri, const Camera& cam, Vec3& normal);
 
 	void ClearColor(Color color);
 	void DrawColor(Color color);
 
 	void ClearDepth();
-	bool DepthTest(Triangle& tri, float alpha, float beta, float gamma, int x, int y);
+	bool DepthTest(const Triangle& tri, float alpha, float beta, float gamma, int x, int y);
 
 	void DrawTriangle(Triangle& tri, Color color);
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color);
@@ -52,7 +52,8 @@ public:
 
 	void DrawLine(float x1, float y1, float x2, float y2, Color color);
 
-	int ClipAgainstPlane(Vec3 point, Vec3 plane, Triangle& in, Triangle& outTri1, Triangle& outTri2);
+	int ClipAgainstPlane(const Vec3& planePoint, const Vec3& planeNormal, const Triangle& in, Triangle& outTri1, Triangle& outTri2);
+
 	void ClipAgainstScreen(std::list<Triangle>& queue, Triangle& tri);
 
 	void Present();

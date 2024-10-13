@@ -80,7 +80,7 @@ public:
 		return (x * x + y * y + z * z);
 	}
 
-	Vec3 GetNormalized()
+	Vec3 GetNormalized() const
 	{
 		Vec3 n = *this;
 		float length = Length();
