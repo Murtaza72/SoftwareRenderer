@@ -43,7 +43,8 @@ void Renderer::Render(const Mesh& mesh, const Camera& cam, int flags)
 	Vec3 nearPlane(0.0f, 0.0f, m_NearPlane);
 	Vec3 normalIntoZ(0.0f, 0.0f, 1.0f);
 
-	#pragma omp parallel for 
+	// Processing triangles on all the cores and use dynamic scheduling 
+	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < triCount; i++)
 	{
 		Triangle tri = triangles[i];
@@ -60,7 +61,7 @@ void Renderer::Render(const Mesh& mesh, const Camera& cam, int flags)
 		Color color = m_Light.color * dp;
 		tri.color = color;
 
-		// Clipping
+		// Clipping against the near plane
 		int clippedCount = 0;
 		Triangle clippedTri[2];
 		clippedCount = ClipAgainstPlane(nearPlane, normalIntoZ, tri, clippedTri[0], clippedTri[1]);
@@ -90,7 +91,7 @@ void Renderer::Render(const Mesh& mesh, const Camera& cam, int flags)
 			std::list<Triangle> triList;
 			ClipAgainstScreen(triList, tri);
 
-			// Draw the transformed, viewed, clipped, projected, sorted, clipped triangles
+			// Draw the transformed, viewed, projected, clipped triangles
 			for (Triangle& tri : triList)
 			{
 				if (flags & RENDER_WIRE)
@@ -142,7 +143,7 @@ void Renderer::SetLightSource(const Light& light)
 
 int Renderer::BackfaceCulling(const Triangle& tri, const Camera& cam, Vec3& normal)
 {
-	// Calculate two vectors on triangles and their cross product
+	// Calculate two vectors on triangle and their cross product
 	Vec3 line1 = tri.p[1] - tri.p[0];
 	Vec3 line2 = tri.p[2] - tri.p[0];
 	normal = Cross(line1, line2);
@@ -252,7 +253,7 @@ int Renderer::ClipAgainstPlane(const Vec3& planePoint, const Vec3& planeNormal, 
 		// original sides of the triangle intersect with the plane
 		float interpolant;
 
-		// calculate intersection points
+		// calculate intersection points for position as well as texture coordinates
 		outTri1.p[1] = IntersectPlane(planePoint, planeNormal, insidePoint[0], outsidePoint[0], interpolant);
 		outTri1.tc[1].u = interpolant * (outsideTex[0].u - insideTex[0].u) + insideTex[0].u;
 		outTri1.tc[1].v = interpolant * (outsideTex[0].v - insideTex[0].v) + insideTex[0].v;
@@ -276,7 +277,7 @@ int Renderer::ClipAgainstPlane(const Vec3& planePoint, const Vec3& planeNormal, 
 
 		float interpolant;
 
-		// first tri is made of two inside points and one intersection point
+		// firat triangle is made of 2 point which is inside and 1 intersection points with clipping plane
 		outTri1.p[0] = insidePoint[0];
 		outTri1.p[1] = insidePoint[1];
 		outTri1.tc[0] = insideTex[0];
@@ -287,7 +288,7 @@ int Renderer::ClipAgainstPlane(const Vec3& planePoint, const Vec3& planeNormal, 
 		outTri1.tc[2].v = interpolant * (outsideTex[0].v - insideTex[0].v) + insideTex[0].v;
 		outTri1.tc[2].w = interpolant * (outsideTex[0].w - insideTex[0].w) + insideTex[0].w;
 
-		// second tri is made of two intersection points and one inside point
+		// second triangle is made of 2 intersection points with clipping plane and 1 point which is inside
 		outTri2.p[0] = insidePoint[1];
 		outTri2.p[1] = outTri1.p[2];
 		outTri2.tc[0] = insideTex[1];
@@ -301,7 +302,7 @@ int Renderer::ClipAgainstPlane(const Vec3& planePoint, const Vec3& planeNormal, 
 		return 2;
 	}
 
-	return -1;	// debug only
+	return -1;	// debug only shouldn't happen
 }
 
 void Renderer::ClipAgainstScreen(std::list<Triangle>& queue, Triangle& tri)
@@ -394,7 +395,7 @@ void Renderer::ClearDepth()
 	std::memset(m_DepthBuffer, 0.0f, (sizeof(float) * m_Width * m_Height));
 }
 
-void Renderer::DrawTriangle(Triangle& tri, Color color)
+void Renderer::DrawTriangle(const Triangle& tri, Color color)
 {
 	DrawTriangle(tri.p[0].x, tri.p[0].y, tri.p[1].x, tri.p[1].y, tri.p[2].x, tri.p[2].y, Colors::Red);
 }
@@ -487,7 +488,7 @@ void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 	}
 }
 
-void Renderer::FillTriangleOptimized(Triangle& tri, Color color)
+void Renderer::FillTriangleOptimized(const Triangle& tri, Color color)
 {
 	// crude observation suggests 2x speedup 
 	// proper profiling required from original
@@ -558,7 +559,7 @@ void Renderer::FillTriangleOptimized(Triangle& tri, Color color)
 	}
 }
 
-void Renderer::FillTriangleTextured(Triangle& tri, Texture tex)
+void Renderer::FillTriangleTextured(const Triangle& tri, const Texture& tex)
 {
 	Vec3 p1 = tri.p[0];
 	Vec3 p2 = tri.p[1];

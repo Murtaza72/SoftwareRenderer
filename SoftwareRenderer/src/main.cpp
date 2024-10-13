@@ -43,7 +43,7 @@ int main()
 
 	Camera cam;
 	cam.position = Vec3(0.0f, 0.0f, 0.0f);
-	cam.lookDir = Vec3(0.0f, 1.0f, 0.0f);
+	cam.lookDir = Vec3(0.0f, 0.0f, 1.0f);
 	cam.roll = 0.0f;
 	cam.yaw = 0.0f;
 	cam.pitch = 0.0f;
@@ -66,7 +66,7 @@ int main()
 			break;
 
 		{
-			//#define ROTATE
+			#define ROTATE
 
 			float theta = 0;
 			#ifdef ROTATE
@@ -167,7 +167,7 @@ int HandleInput(SDL_Event event, float elapsedTime, Camera& cam)
 
 		case SDLK_r:
 			cam.position = Vec3(0.0f, 0.0f, 0.0f);
-			cam.lookDir = Vec3(0.0f, 1.0f, 0.0f);
+			cam.lookDir = Vec3(0.0f, 0.0f, 1.0f);
 			cam.roll = 0.0f;
 			cam.yaw = 0.0f;
 			cam.pitch = 0.0f;

@@ -3,6 +3,9 @@
 #include "Vec3.h"
 #include "Triangle.h"
 
+#define TO_RADIANS(degrees) ((3.1415726 / 180) * (degrees))
+#define TO_DEGREES(radians) ((180 / 3.1415726) * (radians))
+
 class Mat4x4
 {
 public:
@@ -62,9 +65,12 @@ public:
 		};
 	}
 
+	// Perspective Projection
+	// from near to far plane
+	// field of view is in degrees
 	static Mat4x4 Projection(float fov, float aspectRatio, float nearPlane, float farPlane)
 	{
-		float fovRad = 1.0f / tanf(fov * 0.5 / 180.0f * 3.1415f); // convert theta to radians
+		float fovRad = 1.0f / tanf(TO_RADIANS(fov * 0.5)); // convert theta to radians
 		float z1 = farPlane / (farPlane - nearPlane);
 		float z2 = (-farPlane * nearPlane) / (farPlane - nearPlane);
 		return {
@@ -130,6 +136,7 @@ public:
 		};
 	}
 
+	// only works for a homogeneous matrix
 	static Mat4x4 QuickInverse(const Mat4x4& mat)
 	{
 		float mat30 = mat(3, 0) * mat(0, 0) + mat(3, 1) * mat(0, 1) + mat(3, 2) * mat(0, 2);

@@ -20,5 +20,7 @@ public:
 	bool operator!= (const Vec4& rhs) const;
 };
 
+std::ostream& operator<<(std::ostream& out, const Vec4& v);
+
 Vec4 operator+(const Vec4& u, const Vec4& v);
 Vec4 operator-(const Vec4& u, const Vec4& v);

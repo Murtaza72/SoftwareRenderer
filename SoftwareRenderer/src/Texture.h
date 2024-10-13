@@ -18,7 +18,7 @@ public:
 		}
 	}
 
-	Color RepeatSample(float x, float y)
+	Color RepeatSample(float x, float y) const
 	{
 		float u = x - (float)floor(x);
 		float v = y - (float)floor(y);
@@ -28,7 +28,7 @@ public:
 		return GetPixelColor(s, t);
 	}
 
-	Color ClampSample(float x, float y)
+	Color ClampSample(float x, float y) const
 	{
 		x = std::clamp(x, 0.0f, 1.0f);
 		y = std::clamp(y, 0.0f, 1.0f);
@@ -54,7 +54,7 @@ private:
 	void LoadSurface(SDL_Surface* windowSurface, std::string filename)
 	{
 		SDL_Surface* loadedSurface = IMG_Load(filename.c_str());
-		if (loadedSurface == NULL)
+		if (loadedSurface == nullptr)
 		{
 			std::cout << "Unable to load image " << filename.c_str() << "SDL_image Error: " << IMG_GetError() << std::endl;
 		}
@@ -62,7 +62,7 @@ private:
 		{
 			//Convert surface to screen format
 			m_Texture = SDL_ConvertSurface(loadedSurface, windowSurface->format, 0);
-			if (m_Texture == NULL)
+			if (m_Texture == nullptr)
 			{
 				std::cout << "Unable to optimize image " << filename.c_str() << "SDL Error: " << SDL_GetError() << std::endl;
 			}

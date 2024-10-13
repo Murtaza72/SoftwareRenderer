@@ -60,6 +60,11 @@ bool Vec4::operator!= (const Vec4& rhs) const
 	return !(*this == rhs);
 }
 
+std::ostream& operator<<(std::ostream& out, const Vec4& v)
+{
+	return out << "[" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << "]" << std::endl;
+}
+
 Vec4 operator+(const Vec4& u, const Vec4& v)
 {
 	return { u.x + v.x, u.y + v.y, u.z + v.z, u.w + v.w };

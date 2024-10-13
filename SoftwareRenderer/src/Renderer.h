@@ -44,11 +44,11 @@ public:
 	void ClearDepth();
 	bool DepthTest(const Triangle& tri, float alpha, float beta, float gamma, int x, int y);
 
-	void DrawTriangle(Triangle& tri, Color color);
+	void DrawTriangle(const Triangle& tri, Color color);
 	void DrawTriangle(float p1X, float p1Y, float p2X, float p2Y, float p3X, float p3Y, Color color);
 	void FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color);
-	void FillTriangleOptimized(Triangle& tri, Color color);
-	void FillTriangleTextured(Triangle& tri, Texture tex);
+	void FillTriangleOptimized(const Triangle& tri, Color color);
+	void FillTriangleTextured(const Triangle& tri, const Texture& tex);
 
 	void DrawLine(float x1, float y1, float x2, float y2, Color color);
 
