@@ -2,12 +2,12 @@
 
 This projects aims to be implementation of concepts understood while learning about graphics and getting to nitty-gritty details about how things are done.
 
-## Features(as of sept 2024)
+## Features(as of oct 2024)
   1. Line Drawing
   2. Triangle Rasterization
   3. Backface culling
   4. Primitive Lighting and Camera
-  5. z-sorting
+  5. Z-buffer(Depth testing)
 
 ## References
   1. javidx 3D Graphics series(https://www.youtube.com/watch?v=XgMWc6LumG4)
