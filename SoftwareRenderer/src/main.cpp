@@ -13,7 +13,7 @@ int main()
 
 	Renderer renderer(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-	Texture t(SDL_GetWindowSurface(renderer.GetWindow()), "./assets/me.jpg");
+	Texture t(SDL_GetWindowSurface(renderer.GetWindow()), "./assets/texture/me.jpg");
 	renderer.SetTexture(t);
 
 	Light light;
@@ -37,7 +37,7 @@ int main()
 
 	if (flags & RENDER_FLAT)
 	{
-		if (!cubeMesh.LoadObject("./assets/bunny.obj"), false)
+		if (!cubeMesh.LoadObject("./assets/model/bunny.obj"), false)
 			std::cout << "Could not load the obj file!!!" << std::endl;
 	}
 
