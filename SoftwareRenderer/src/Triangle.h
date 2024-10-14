@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vec3.h"
+#include "Vec4.h"
 #include "Color.h"
 
 struct TexCoord
@@ -12,7 +12,7 @@ struct TexCoord
 
 struct Triangle
 {
-	Vec3 p[3];
+	Vec4 p[3];
 	TexCoord tc[3];
 	Color color = Colors::Magenta;
 

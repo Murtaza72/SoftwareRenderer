@@ -119,6 +119,12 @@ public:
 		Add({ Vec3(1.0f, 0.0f, 1.0f), Vec3(0.0f, 0.0f, 0.0f), Vec3(1.0f, 0.0f, 0.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f}, TexCoord{1.0f, 1.0f, 1.0f} });
 	}
 
+	void LoadPlane()
+	{
+		Add({ Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 1.0f, 1.0f), Vec3(1.0f, 1.0f, 1.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{0.0f, 0.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f} });
+		Add({ Vec3(0.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 1.0f), Vec3(1.0f, 1.0f, 0.0f), TexCoord{0.0f, 1.0f, 1.0f}, TexCoord{1.0f, 0.0f, 1.0f}, TexCoord{1.0f, 1.0f, 1.0f} });
+	}
+
 private:
 	std::vector<Triangle> m_Tris;
 };

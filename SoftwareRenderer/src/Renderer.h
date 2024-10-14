@@ -34,9 +34,10 @@ public:
 	void SetLightSource(const Light& light);
 	void SetCamera(const Vec3& position, const Vec3& target, const Vec3& up);
 
-	void Render(const Mesh& mesh, const Camera& cam, int flags = RENDER_FLAT | RENDER_WIRE);
+	void Render(const Mesh& mesh, const Camera& cam, int flags = RENDER_WIRE);
 
 	int BackfaceCulling(const Triangle& tri, const Camera& cam, Vec3& normal);
+	void PerspectiveDivide(Triangle& tri);
 
 	void ClearColor(Color color);
 	void DrawColor(Color color);

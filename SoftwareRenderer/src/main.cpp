@@ -21,7 +21,7 @@ int main()
 	light.color = Colors::White;
 	renderer.SetLightSource(light);
 
-	float nearPlane = 1.0f;
+	float nearPlane = 0.1f;
 	float farPlane = 1000.0f;
 	float fov = 90.0f;
 	float aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
@@ -35,10 +35,10 @@ int main()
 		cubeMesh.LoadCube();
 	}
 
-	if (flags & RENDER_FLAT | RENDER_WIRE)
+	if (flags & RENDER_FLAT)
 	{
-		//if (!cubeMesh.LoadObject("./assets/bunny.obj"), false)
-		std::cout << "Could not load the obj file!!!" << std::endl;
+		if (!cubeMesh.LoadObject("./assets/bunny.obj"), false)
+			std::cout << "Could not load the obj file!!!" << std::endl;
 	}
 
 	Camera cam;

@@ -4,6 +4,10 @@
 
 #define EPSILON 1e-5
 
+// TODO: Manage these in a unified flags system
+#define PARALLEL
+#define PERSPECTIVE_CORRECT_TEX
+
 Renderer::Renderer(int width, int height)
 	: m_Width(width), m_Height(height)
 {
@@ -18,7 +22,7 @@ Renderer::Renderer(int width, int height)
 
 	m_ScreenRect = { 0,0,m_Width,m_Height };
 
-	// s->format->format = SDL_PIXELFORMAT_XRGB8888
+	// m_Window->format = SDL_PIXELFORMAT_XRGB8888
 	m_ColorTex = SDL_CreateTexture(m_Renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, m_ScreenRect.w, m_ScreenRect.h);
 
 	m_ColorBuffer = new uint32_t[m_Width * m_Height];
@@ -44,7 +48,9 @@ void Renderer::Render(const Mesh& mesh, const Camera& cam, int flags)
 	Vec3 normalIntoZ(0.0f, 0.0f, 1.0f);
 
 	// Processing triangles on all the cores and use dynamic scheduling 
+	#ifdef PARALLEL
 	#pragma omp parallel for schedule(dynamic)
+	#endif
 	for (int i = 0; i < triCount; i++)
 	{
 		Triangle tri = triangles[i];
@@ -54,12 +60,12 @@ void Renderer::Render(const Mesh& mesh, const Camera& cam, int flags)
 		if (BackfaceCulling(tri, cam, normal)) continue;
 
 		// Check how much the triangle normal is facing the light dir 
-		// and shade it appropriately
+		// and shade(diffuse component) appropriately
 		m_Light.dir = m_Light.dir.GetNormalized();
 		float dp = Dot(normal, m_Light.dir);
 		dp = std::max(0.1f, dp);
-		Color color = m_Light.color * dp;
-		tri.color = color;
+		Color diffuse = m_Light.color * dp;
+		tri.color = diffuse;
 
 		// Clipping against the near plane
 		int clippedCount = 0;
@@ -71,23 +77,25 @@ void Renderer::Render(const Mesh& mesh, const Camera& cam, int flags)
 			tri = TransformTriangle(clippedTri[n], m_ProjectionMat);
 			tri.color = clippedTri[n].color;
 
-			// invert x/y axis
+			PerspectiveDivide(tri);
+
+			// invert x axis
 			tri.p[0].x *= -1.0f;
 			tri.p[1].x *= -1.0f;
 			tri.p[2].x *= -1.0f;
-			tri.p[0].y *= -1.0f;
-			tri.p[1].y *= -1.0f;
-			tri.p[2].y *= -1.0f;
 
-			// translate to middle of the screen
-			tri.p[0] += Vec3(1.0f, 1.0f, 0.0f);
-			tri.p[1] += Vec3(1.0f, 1.0f, 0.0f);
-			tri.p[2] += Vec3(1.0f, 1.0f, 0.0f);
+			// Translate to middle of the screen
+			// This is like NDC -> Screen/Pixel Space Transformation 
+			// but not really as NDC comes after clip space
+			// https://learn.microsoft.com/en-gb/windows/win32/direct3d11/d3d10-graphics-programming-guide-rasterizer-stage-getting-started
+			tri.p[0].x = (tri.p[0].x + 1.0f) * (0.5f * m_Width);
+			tri.p[1].x = (tri.p[1].x + 1.0f) * (0.5f * m_Width);
+			tri.p[2].x = (tri.p[2].x + 1.0f) * (0.5f * m_Width);
+			tri.p[0].y = (1.0f - tri.p[0].y) * (0.5f * m_Height);
+			tri.p[1].y = (1.0f - tri.p[1].y) * (0.5f * m_Height);
+			tri.p[2].y = (1.0f - tri.p[2].y) * (0.5f * m_Height);
 
-			tri.p[0] *= Vec3(0.5f * m_Width, 0.5f * m_Height, 1.0f);
-			tri.p[1] *= Vec3(0.5f * m_Width, 0.5f * m_Height, 1.0f);
-			tri.p[2] *= Vec3(0.5f * m_Width, 0.5f * m_Height, 1.0f);
-
+			// Screen space clipping
 			std::list<Triangle> triList;
 			ClipAgainstScreen(triList, tri);
 
@@ -111,6 +119,21 @@ void Renderer::Render(const Mesh& mesh, const Camera& cam, int flags)
 			}
 		}
 	}
+}
+
+void Renderer::PerspectiveDivide(Triangle& tri)
+{
+	tri.p[0].x /= tri.p[0].w;
+	tri.p[0].y /= tri.p[0].w;
+	tri.p[0].z /= tri.p[0].w;
+
+	tri.p[1].x /= tri.p[1].w;
+	tri.p[1].y /= tri.p[1].w;
+	tri.p[1].z /= tri.p[1].w;
+
+	tri.p[2].x /= tri.p[2].w;
+	tri.p[2].y /= tri.p[2].w;
+	tri.p[2].z /= tri.p[2].w;
 }
 
 void Renderer::SetProjection(float fov, float aspectRatio, float nearPlane, float farPlane)
@@ -150,7 +173,7 @@ int Renderer::BackfaceCulling(const Triangle& tri, const Camera& cam, Vec3& norm
 	normal = normal.GetNormalized();
 
 	// Cull triangle if its a back face
-	if (Dot(normal, { tri.p[0] - cam.position }) > 0.0f)
+	if (Dot(normal, { Vec3(tri.p[0]) - cam.position }) > 0.0f)
 		return 1;
 
 	return 0;
@@ -253,6 +276,8 @@ int Renderer::ClipAgainstPlane(const Vec3& planePoint, const Vec3& planeNormal, 
 		// original sides of the triangle intersect with the plane
 		float interpolant;
 
+		// TODO: Perspective correct interpolant should be calculated for the texture coordinates
+
 		// calculate intersection points for position as well as texture coordinates
 		outTri1.p[1] = IntersectPlane(planePoint, planeNormal, insidePoint[0], outsidePoint[0], interpolant);
 		outTri1.tc[1].u = interpolant * (outsideTex[0].u - insideTex[0].u) + insideTex[0].u;
@@ -277,7 +302,7 @@ int Renderer::ClipAgainstPlane(const Vec3& planePoint, const Vec3& planeNormal, 
 
 		float interpolant;
 
-		// firat triangle is made of 2 point which is inside and 1 intersection points with clipping plane
+		// first triangle is made of 2 point which is inside and 1 intersection points with clipping plane
 		outTri1.p[0] = insidePoint[0];
 		outTri1.p[1] = insidePoint[1];
 		outTri1.tc[0] = insideTex[0];
@@ -450,6 +475,8 @@ bool IsTopLeftEdge(Vec2 start, Vec2 end)
 
 void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 {
+	// https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
+
 	float area = EdgeCross(p1, p2, p3);
 	// If the triangle is clockwise, swap two vertices to make it counterclockwise
 	if (area < 0)
@@ -490,9 +517,6 @@ void Renderer::FillTriangle(Vec2 p1, Vec2 p2, Vec2 p3, Color color)
 
 void Renderer::FillTriangleOptimized(const Triangle& tri, Color color)
 {
-	// crude observation suggests 2x speedup 
-	// proper profiling required from original
-
 	// Todo: tile-based rendering using 4x4 and 8x8 pixels together for parallelization
 
 	Vec3 p1 = tri.p[0];
@@ -561,9 +585,9 @@ void Renderer::FillTriangleOptimized(const Triangle& tri, Color color)
 
 void Renderer::FillTriangleTextured(const Triangle& tri, const Texture& tex)
 {
-	Vec3 p1 = tri.p[0];
-	Vec3 p2 = tri.p[1];
-	Vec3 p3 = tri.p[2];
+	Vec4 p1 = tri.p[0];
+	Vec4 p2 = tri.p[1];
+	Vec4 p3 = tri.p[2];
 	TexCoord t1 = tri.tc[0];
 	TexCoord t2 = tri.tc[1];
 	TexCoord t3 = tri.tc[2];
@@ -613,16 +637,20 @@ void Renderer::FillTriangleTextured(const Triangle& tri, const Texture& tex)
 				float beta = w2 * invArea;
 				float gamma = w3 * invArea;
 
-				#if 1
-				float u = (alpha * t1.u) + (beta * t2.u) + (gamma * t3.u);
-				float v = (alpha * t1.v) + (beta * t2.v) + (gamma * t3.v);
+				#ifdef PERSPECTIVE_CORRECT_TEX
 
-				#else
+				// Interpolating with respect to W=1/w and tex coordinates being
+				// u/W and v/W
+
 				float w = (alpha * (1.0f / p1.w)) + (beta * (1.0f / p2.w)) + (gamma * (1.0f / p3.w));
-				float u = (alpha * (t1.u / t1.w)) + (beta * (t2.u / t2.w)) + (gamma * (t3.u / t3.w));
-				float v = (alpha * (t1.v / t1.w)) + (beta * (t2.v / t2.w)) + (gamma * (t3.v / t3.w));
+				float u = (alpha * (t1.u / p1.w)) + (beta * (t2.u / p2.w)) + (gamma * (t3.u / p3.w));
+				float v = (alpha * (t1.v / p1.w)) + (beta * (t2.v / p2.w)) + (gamma * (t3.v / p3.w));
 				u /= w;
 				v /= w;
+
+				#else
+				float u = (alpha * t1.u) + (beta * t2.u) + (gamma * t3.u);
+				float v = (alpha * t1.v) + (beta * t2.v) + (gamma * t3.v);
 				#endif
 
 				// Due to floating point inaccuracy when calculating z value 
@@ -631,8 +659,6 @@ void Renderer::FillTriangleTextured(const Triangle& tri, const Texture& tex)
 
 				if (DepthTest(tri, alpha, beta, gamma, x, y))
 				{
-
-					//Color color = tex.GetRGB(u, v);
 					Color color = tex.ClampSample(u, v);
 
 					DrawPixel(x, y, color);

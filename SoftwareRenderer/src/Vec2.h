@@ -1,7 +1,7 @@
 #pragma once
 
-#include "pch.h"
-#include "Vec3.h"
+class Vec3;
+class Vec4;
 
 class Vec2
 {
@@ -12,6 +12,7 @@ public:
 	Vec2();
 	Vec2(float x, float y);
 	Vec2(const Vec3& v);
+	Vec2(const Vec4& v);
 
 	Vec2 operator-() const;
 	Vec2& operator+= (const Vec2& rhs);
